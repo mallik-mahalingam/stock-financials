@@ -82,19 +82,19 @@ The assistant runs the sync, builds the table, and points you to the canvas file
 
 After sync, you get **one file** with **three tabs** — **Income · Balance Sheet · Cash Flow**. Open it in **Cursor** for the interactive view: summary stats at the top, **12 quarters** in the table, and charts you can customize by ticking rows.
 
-Real example — **PANW** (Palo Alto Networks), from SEC filings. Each screenshot is the **full page** (table + chart at the bottom):
+Real example — **PANW** (Palo Alto Networks), from SEC filings. Each image shows key rows, summary stats, and the **chart** (GitHub-sized preview — open the live canvas in Cursor for all 12 quarters):
 
 ### Income tab
 
-![PANW income statement canvas — 12 quarters, revenue, margins, EPS, and chart](docs/screenshots/panw-income.png)
+![PANW income — table sample and revenue / margin chart](docs/screenshots/panw-income.png)
 
 ### Balance sheet tab
 
-![PANW balance sheet canvas — assets, liabilities, equity across 12 quarters](docs/screenshots/panw-balance-sheet.png)
+![PANW balance sheet — table sample and assets / equity chart](docs/screenshots/panw-balance-sheet.png)
 
 ### Cash flow tab
 
-![PANW cash flow canvas — operating, investing, financing, and free cash flow](docs/screenshots/panw-cash-flow.png)
+![PANW cash flow — table sample and operating CF / FCF chart](docs/screenshots/panw-cash-flow.png)
 
 <small>
 
