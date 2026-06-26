@@ -80,9 +80,9 @@ The assistant runs the sync, builds the table, and points you to the canvas file
 
 ## What the canvas looks like
 
-One tabbed file in **Cursor** — **Income · Balance Sheet · Cash Flow**. Below is a full **MSFT income statement** preview: all line items, **12 quarters**, summary stats, and chart (same layout as the live canvas).
+One tabbed file in **Cursor** — **Income · Balance Sheet · Cash Flow**. Below is a real **MSFT income statement** screenshot from the live canvas: table, **dual-axis chart** (dollars on the left, margin % on the right), and selected-metric summary.
 
-![MSFT income statement — 12 quarters, full table, chart](docs/screenshots/msft-income.png)
+![MSFT income statement — live Cursor canvas](docs/screenshots/msft-income.png)
 
 <small>
 
