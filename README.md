@@ -1,261 +1,115 @@
 # Stock Financials
 
-Pull the last **12 quarters** of official GAAP financials — **Income Statement**, **Balance Sheet**, and **Cash Flow** — straight from SEC filings, and view them in a clean, tabbed table inside **Cursor**.
+See **Income**, **Balance Sheet**, and **Cash Flow** for any US stock — last **12 quarters**, pulled from official **SEC filings**, shown in a tabbed table inside **Cursor**.
 
-You do **not** need to be a software engineer. After a one-time setup, getting financials for a stock is usually **one command** (or one sentence in Cursor chat).
-
----
-
-## What you get
-
-For any US-listed ticker (e.g. `AAPL`, `PANW`, `INTU`):
-
-| Output | What it is |
-|--------|------------|
-| **Interactive canvas** | A tabbed spreadsheet-style view in Cursor — Income · Balance Sheet · Cash Flow — with charts on key rows |
-| **Data files** | Saved under `json-data/` so you can re-open them without re-downloading from the SEC |
-
-Numbers come from **SEC EDGAR** (the company’s own filings), not from a third-party data vendor.
+No coding required.
 
 ---
 
-## One-time setup
+## Install (one time)
 
-Do these steps once after cloning the repo.
+### 1. Get this folder on your Mac
 
-### Step 1 — Clone the repo
+**Option A — Download (easiest)**  
+Go to [github.com/mallik-mahalingam/stock-financials](https://github.com/mallik-mahalingam/stock-financials) → green **Code** → **Download ZIP** → unzip.
 
-Open **Terminal** (on Mac: Spotlight → type “Terminal” → Enter), then paste:
+**Option B — Git**  
+Open Terminal and paste:
 
 ```bash
 git clone https://github.com/mallik-mahalingam/stock-financials.git ~/src/stock-financials
-cd ~/src/stock-financials
 ```
 
-> **Already have the folder?** Just `cd ~/src/stock-financials` instead.
+### 2. Run setup (one click)
 
-### Step 2 — Check Python
+In Finder, open the `stock-financials` folder and **double-click**:
 
-This tool uses Python, which is already installed on most Macs. Check with:
-
-```bash
-python3 --version
+```
+Setup.command
 ```
 
-You should see **3.10 or higher**. No extra packages to install.
+It will ask for your **name** and **email** (the SEC requires this). That’s it — setup saves your answers so you never type them again.
 
-### Step 3 — Tell the SEC who you are (required)
-
-The SEC requires every automated request to include a **name and email**. Replace the example below with yours:
-
-```bash
-export SEC_USER_AGENT="Jane Doe stock-financials research jane@example.com"
-```
-
-To avoid typing this every time, add the same line to your shell profile:
-
-```bash
-echo 'export SEC_USER_AGENT="Jane Doe stock-financials research jane@example.com"' >> ~/.zshrc
-source ~/.zshrc
-```
-
-### Step 4 — Optional: enable Cursor AI help
-
-If you use **Cursor**, link the built-in skill so the AI knows how to run this for you:
-
-```bash
-ln -sf ~/src/stock-financials/skills ~/.cursor/skills/stock-financials
-```
-
-After this, you can type in chat: *“Get financials for PANW”* or `/stock-financials AAPL`.
+> **First time on Mac?** If macOS blocks the file: right-click **Setup.command** → **Open** → **Open** again.
 
 ---
 
-## How to use it (main workflow)
+## Get financials (one click)
 
-Replace `TICKER` with a stock symbol (always uppercase in commands).
-
-### Get all three statements + canvas
-
-```bash
-python3 ~/src/stock-financials/scripts/sec_financials.py sync TICKER
-```
-
-**Examples:**
-
-```bash
-python3 ~/src/stock-financials/scripts/sec_financials.py sync PANW
-python3 ~/src/stock-financials/scripts/sec_financials.py sync AAPL
-python3 ~/src/stock-financials/scripts/sec_financials.py sync INTU
-```
-
-The first run for a ticker takes **30–90 seconds** (downloads from the SEC). Later runs are fast unless a new quarterly filing appeared.
-
-When it finishes, you’ll see a path like:
+**Double-click:**
 
 ```
-canvas/panw-financials.canvas.tsx
+Get Financials.command
 ```
 
-### Open the canvas in Cursor
+Type a ticker when asked, for example:
 
-1. In Cursor’s **file explorer**, go to `~/src/stock-financials/canvas/`
-2. Open `{ticker}-financials.canvas.tsx` (ticker is lowercase, e.g. `panw-financials.canvas.tsx`)
-3. Cursor shows the interactive table beside your chat
-
-**Tip — show canvas next to chat automatically:** copy the file into your project’s canvases folder:
-
-```bash
-cp ~/src/stock-financials/canvas/panw-financials.canvas.tsx \
-   ~/.cursor/projects/<your-project>/canvases/
+```
+AAPL
+PANW
+MSFT
 ```
 
-Replace `<your-project>` with your Cursor workspace folder name under `~/.cursor/projects/`.
+Wait about a minute the first time. When it finishes, it shows you a file to open in **Cursor** (and may highlight it in Finder).
+
+**In Cursor:** open the file it mentions — something like `panw-financials.canvas.tsx` under the `canvas` folder. You’ll see three tabs: Income · Balance Sheet · Cash Flow.
 
 ---
 
-## Easiest path: ask Cursor
+## Even easier: ask Cursor
 
-If you completed **Step 4** above, skip the terminal and just ask in Cursor chat:
+After running **Setup.command** once, you can skip the double-click step and just type in Cursor chat:
 
-> “Sync financials for Microsoft”  
-> “Show me AAPL income, balance sheet, and cash flow for the last 12 quarters”  
-> `/stock-financials DDOG`
-
-The agent runs `sync`, opens the canvas, and links it in chat.
+> Get financials for Apple  
+> Show me PANW income, balance sheet, and cash flow  
+> `/stock-financials MSFT`
 
 ---
 
-## When a new quarter is filed
+## When numbers update
 
-Run the same command again:
-
-```bash
-python3 ~/src/stock-financials/scripts/sec_financials.py sync TICKER
-```
-
-The tool checks whether SEC has a newer 10-Q than your saved data. If yes, it rebuilds automatically.
-
-To **check without rebuilding** (see if you’re up to date):
-
-```bash
-python3 ~/src/stock-financials/scripts/sec_financials.py check TICKER
-```
+After a company files a new quarterly report, run **Get Financials.command** again with the same ticker. It only re-downloads if SEC has something newer.
 
 ---
 
-## Shorter commands (optional)
+## Reading the table
 
-Paste once per Terminal session (or add to `~/.zshrc`):
-
-```bash
-alias sf='python3 ~/src/stock-financials/scripts/sec_financials.py'
-```
-
-Then use:
-
-```bash
-sf sync PANW
-sf check AAPL
-```
-
----
-
-## Reading the tables
-
-| Symbol / style | Meaning |
-|----------------|---------|
+| You see | Meaning |
+|---------|---------|
 | `$2,257` | Dollars in **millions** |
-| `(183)` | Negative number |
-| `0.76` | Earnings per share (2 decimal places) |
+| `(183)` | Loss / negative |
+| `0.76` | Earnings per share |
 | `47.0%` | Margin or year-over-year change |
-| `*` on a value | Calculated by this tool when the filing doesn’t report that line directly |
-
-**Section headers** (e.g. “Operating Activities”, “Assets”) are labels only — the numbers are in the rows below them.
+| `*` | Estimated by this tool when the filing doesn’t spell out that line |
 
 ---
 
-## Where files are saved
+## Something wrong?
 
-After `sync TICKER`, look here:
+| Problem | Fix |
+|---------|-----|
+| “Setup is not done yet” | Double-click **Setup.command** first |
+| macOS won’t open `.command` file | Right-click → **Open** |
+| “Python not installed” | Install from [python.org/downloads](https://www.python.org/downloads/), then run Setup again |
+| Wrong or old numbers | Run **Get Financials.command** again — don’t edit files by hand |
+| Ticker not found | Use the US symbol (e.g. `BRK.B`) |
 
-```
-~/src/stock-financials/
-  json-data/
-    PANW-income.json
-    PANW-balance-sheet.json
-    PANW-cash-flow.json
-  canvas/
-    panw-financials.canvas.tsx    ← open this in Cursor
-```
-
-These folders are created automatically. They are **not** checked into git — they live on your machine.
+Your saved data lives in the `json-data` and `canvas` folders inside this project. Those folders are created automatically on first use.
 
 ---
 
-## Troubleshooting
+## Optional: Terminal one-liners
 
-| Problem | What to do |
-|---------|------------|
-| `SEC_USER_AGENT` / blocked by SEC | Set Step 3 again in this Terminal window, or add it to `~/.zshrc` |
-| `python3: command not found` | Install Python 3 from [python.org](https://www.python.org/downloads/) or `brew install python` |
-| Ticker not found | Use the US exchange symbol (e.g. `BRK.B` not `BRK-B`). Some foreign-only listings may not work. |
-| Canvas looks old | Run `sync TICKER` again — don’t edit the `.tsx` file by hand |
-| Slow first run | Normal — SEC download + parsing. Retry if your network dropped |
-
-**View recent SEC filings for a ticker** (opens URLs you can click in the terminal output):
+If you prefer Terminal after setup:
 
 ```bash
-sf edgar PANW
+~/src/stock-financials/get-financials.sh AAPL
 ```
+
+Advanced commands live in `scripts/sec_financials.py` (`sync`, `check`, `build`). See `skills/SKILL.md` for Cursor agent details.
 
 ---
 
-## Other commands (reference)
+## About the data
 
-Most people only need `sync`. These are here if you need more control:
-
-| What you want | Command |
-|---------------|---------|
-| Everything (usual choice) | `sf sync TICKER` |
-| Check if data is stale | `sf check TICKER` |
-| Force re-download from SEC | `sf build TICKER` |
-| Rebuild one statement only | `sf build TICKER income` (or `balance-sheet`, `cash-flow`) |
-| Refresh canvas only | `sf render TICKER` |
-| See saved file paths | `sf path TICKER` |
-
-Advanced environment variables (optional):
-
-| Variable | Purpose |
-|----------|---------|
-| `SEC_USER_AGENT` | **Required** — your name + email for SEC |
-| `STOCK_FINANCIALS_DIR` | Custom folder for JSON data |
-| `STOCK_FINANCIALS_CANVAS_DIR` | Custom folder for canvas output |
-
----
-
-## What to know about the data
-
-- **Source:** SEC EDGAR XBRL tags from 10-Q / 10-K filings.
-- **Q4 columns:** Sometimes computed as full-year minus first nine months when the filer doesn’t publish a standalone Q4 tag.
-- **Cash flow detail:** Operating / Investing / Financing **totals** tie to the filing; individual working-capital lines can differ slightly from vendor sites.
-- **Free cash flow extras** (NOPAT, Levered FCF, etc.): Derived memo lines using a simplified 21% tax assumption — useful for comparison, not official GAAP subtotals.
-- **Blank rows:** Omitted when empty across all 12 quarters.
-
-For agent validation rules and row definitions, see `skills/SKILL.md`.
-
----
-
-## Project layout (for reference)
-
-```
-~/src/stock-financials/
-  scripts/sec_financials.py   ← main command you run
-  json-data/                  ← generated data (your machine)
-  canvas/                     ← generated views (your machine)
-  skills/SKILL.md             ← Cursor agent instructions
-  schema/                     ← data format definitions
-  templates/                  ← canvas layout templates
-```
-
-**Do not** hand-edit `.tsx` canvas files. Always run `sync TICKER` to refresh after data changes.
+Numbers come from **SEC EDGAR** (the company’s own 10-Q / 10-K filings), not from a paid data feed. Some lines are calculated when filers don’t report them directly (marked with `*`).
