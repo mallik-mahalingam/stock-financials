@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate canvas-style HTML previews and PNG screenshots for README."""
+"""Generate chart PNG screenshots for README (tables stay as markdown)."""
 
 from __future__ import annotations
 
@@ -19,112 +19,36 @@ OUT_DIR = REPO / "docs" / "screenshots"
 PREVIEW_DIR = REPO / "docs" / "preview"
 
 TABS = [
-    ("income", "Income", "PANW-income.json", "Income Statement"),
-    ("balance-sheet", "Balance Sheet", "PANW-balance-sheet.json", "Balance Sheet"),
-    ("cash-flow", "Cash Flow", "PANW-cash-flow.json", "Cash Flow Statement"),
+    ("income", "Income", "PANW-income.json"),
+    ("balance-sheet", "Balance Sheet", "PANW-balance-sheet.json"),
+    ("cash-flow", "Cash Flow", "PANW-cash-flow.json"),
 ]
 
-COMPACT_ROWS: dict[str, list[str]] = {
-    "income": [
-        "Total Revenues",
-        "Total Revenues %Chg",
-        "Gross Profit",
-        "Gross Profit Margin",
-        "Operating Profit",
-        "Operating Margin",
-        "Consolidated Net Income",
-        "Diluted EPS",
-    ],
-    "balance-sheet": [
-        "Assets",
-        "Cash and Cash Equivalents",
-        "Total Current Assets",
-        "Total Assets",
-        "Liabilities",
-        "Total Liabilities",
-        "Total Shareholders' Equity",
-    ],
-    "cash-flow": [
-        "Operating Activities",
-        "Cash from Operating Activities",
-        "Investing Activities",
-        "Cash from Investing Activities",
-        "Financing Activities",
-        "Cash from Financing Activities",
-        "Free Cash Flow",
-        "Net Change in Cash",
-    ],
-}
-
-README_QUARTERS = 4
-# GitHub README collapses tall images (~400px+). Keep each PNG under this height.
-README_TABLE_VIEWPORT = (1200, 340)
-README_CHART_VIEWPORT = (1200, 320)
+README_CHART_VIEWPORT = (1200, 360)
 
 CSS = """
 * { box-sizing: border-box; }
 body {
-  margin: 0; padding: 24px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  background: #f8f9fb; color: #1a1a1a; max-width: 1680px;
+  margin: 0; padding: 16px 20px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: #f8f9fb; color: #1a1a1a;
 }
-body.readme { padding: 20px 24px 24px; }
-h1 { font-size: 28px; margin: 0 0 4px; font-weight: 650; }
-body.readme h1 { font-size: 24px; }
-.sub { color: #5c6370; font-size: 14px; margin-bottom: 8px; }
-body.readme .sub { font-size: 13px; margin-bottom: 6px; }
-.fiscal { color: #5c6370; font-size: 12px; margin-bottom: 20px; }
-body.readme .fiscal { display: none; }
-.tabs { display: flex; gap: 8px; margin-bottom: 20px; }
-body.readme .tabs { margin-bottom: 14px; }
+.tabs { display: flex; gap: 8px; margin-bottom: 12px; }
 .tab {
   padding: 8px 16px; border-radius: 999px; font-size: 13px; font-weight: 500;
   border: 1px solid #d8dde6; background: #fff; color: #444;
 }
 .tab.active { background: #2563eb; color: #fff; border-color: #2563eb; }
-.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
-body.readme .stats { gap: 12px; margin-bottom: 16px; }
-.stat {
+.chart-box {
   background: #fff; border: 1px solid #e5e8ef; border-radius: 10px; padding: 14px 16px;
 }
-body.readme .stat { padding: 10px 12px; }
-.stat .val { font-size: 22px; font-weight: 650; margin-bottom: 4px; }
-body.readme .stat .val { font-size: 18px; }
-.stat .lbl { font-size: 12px; color: #5c6370; line-height: 1.35; }
-h2 { font-size: 18px; margin: 0 0 12px; }
-body.readme h2 { font-size: 16px; margin-bottom: 8px; }
-.hint { color: #5c6370; font-size: 12px; margin: -4px 0 10px; font-style: italic; }
-.wrap { overflow-x: auto; border: 1px solid #e5e8ef; border-radius: 10px; background: #fff; }
-table { border-collapse: collapse; min-width: 1280px; width: 100%; font-size: 12px; }
-body.readme table { min-width: 900px; font-size: 11px; }
-th, td { padding: 8px 10px; border-bottom: 1px solid #eef1f6; white-space: nowrap; }
-body.readme th, body.readme td { padding: 6px 8px; }
-th { background: #f3f5f9; text-align: right; font-weight: 600; color: #444; }
-th:first-child, td:first-child { text-align: left; min-width: 260px; max-width: 320px; }
-body.readme th:first-child, body.readme td:first-child { min-width: 220px; }
+.chart-title { font-size: 16px; font-weight: 600; margin-bottom: 10px; }
+.legend { font-size: 12px; color: #5c6370; margin-bottom: 10px; }
+.wrap { overflow-x: auto; border: 1px solid #eef1f6; border-radius: 8px; }
+table { border-collapse: collapse; width: 100%; font-size: 12px; }
+th, td { padding: 7px 10px; border-bottom: 1px solid #eef1f6; }
+th { background: #f3f5f9; text-align: left; font-weight: 600; }
 td.num { text-align: right; font-variant-numeric: tabular-nums; }
-tr:nth-child(even) td { background: #fafbfc; }
-tr.total td { font-weight: 600; }
-tr.section td { font-weight: 600; background: #f0f3f8; color: #333; }
-tr.italic td { font-style: italic; color: #5c6370; }
-.chart-box {
-  margin-top: 24px; background: #fff; border: 1px solid #e5e8ef; border-radius: 10px; padding: 16px;
-}
-body.readme .chart-box { margin-top: 16px; padding: 14px; }
-.chart-title { font-size: 16px; font-weight: 600; margin-bottom: 12px; }
-.legend { font-size: 12px; color: #5c6370; margin-bottom: 12px; }
-.chart-stats { margin-top: 16px; font-size: 12px; }
-.chart-stats table { min-width: 720px; }
-body.readme svg { min-height: 180px; max-height: 200px; }
-body.readme.chart-only { padding: 16px 20px 12px; }
-body.readme.chart-only .tabs { margin-bottom: 10px; }
-body.readme.chart-only .chart-box { margin-top: 0; padding: 12px; }
-body.readme.chart-only .chart-stats table { min-width: 560px; }
-body.readme.table-only { padding: 16px 20px 12px; }
-body.readme.table-only h1 { display: none; }
-body.readme.table-only .sub { display: none; }
-body.readme.table-only .stats { grid-template-columns: repeat(2, 1fr); margin-bottom: 10px; }
-body.readme.table-only .stat .val { font-size: 16px; }
-body.readme.table-only .stat .lbl { font-size: 11px; }
+.chart-stats { margin-top: 14px; }
 svg { width: 100%; height: auto; display: block; }
 """
 
@@ -133,23 +57,11 @@ def load_json(name: str) -> dict:
     return json.loads((JSON_DIR / name).read_text())
 
 
-def row_class(row: dict) -> str:
-    if row.get("plottable") is False and row.get("kind") == "total":
-        return "section"
-    if row.get("kind") == "total":
-        return "total"
-    if row.get("kind") == "italic":
-        return "italic"
-    return ""
-
-
-def quarter_labels(data: dict, limit: int | None = None) -> list[str]:
+def quarter_labels(data: dict) -> list[str]:
     qs = data["quarters"]
     if qs and isinstance(qs[0], dict):
-        labels = [q["label"] for q in qs]
-    else:
-        labels = list(qs)
-    return labels[:limit] if limit else labels
+        return [q["label"] for q in qs]
+    return list(qs)
 
 
 def iter_rows(data: dict) -> list[dict]:
@@ -159,45 +71,6 @@ def iter_rows(data: dict) -> list[dict]:
             out.extend(sec["rows"])
         return out
     return data["rows"]
-
-
-def compact_rows(data: dict, active: str) -> list[dict]:
-    wanted = COMPACT_ROWS[active]
-    by_label = {r["label"]: r for r in iter_rows(data)}
-    picked: list[dict] = []
-    for lab in wanted:
-        row = by_label.get(lab)
-        if not row:
-            continue
-        if lab == "Free Cash Flow" and row.get("plottable") is False:
-            for r in iter_rows(data):
-                if r["label"] == lab and r.get("plottable") is not False:
-                    row = r
-                    break
-        picked.append(row)
-    return picked
-
-
-def table_html(data: dict, active: str, *, readme: bool) -> str:
-    limit = README_QUARTERS if readme else None
-    quarters = quarter_labels(data, limit)
-    rows = compact_rows(data, active) if readme else iter_rows(data)
-    body = "\n".join(render_row(row, quarters) for row in rows)
-    headers = "".join(f"<th>{html.escape(q)}</th>" for q in quarters)
-    hint = (
-        '<p class="hint">Sample rows (4 quarters). Live canvas: all line items × 12 quarters.</p>'
-        if readme
-        else ""
-    )
-    return f"""{hint}<div class="wrap"><table>
-<thead><tr><th>Line item</th>{headers}</tr></thead>
-<tbody>{body}</tbody></table></div>"""
-
-
-def render_row(row: dict, quarters: list[str]) -> str:
-    cls = row_class(row)
-    cells = "".join(f'<td class="num">{html.escape(v or "—")}</td>' for v in row["values"][: len(quarters)])
-    return f'<tr class="{cls}"><td>{html.escape(row["label"])}</td>{cells}</tr>'
 
 
 def parse_value(raw: str) -> float | None:
@@ -229,7 +102,7 @@ def chart_rows(data: dict, labels: list[str]) -> list[tuple[str, list[str]]]:
     return picked
 
 
-def simple_chart_svg(data: dict, labels: list[str], *, readme: bool) -> str:
+def chart_html(data: dict, labels: list[str]) -> str:
     quarters = quarter_labels(data)
     series = []
     colors = ["#2563eb", "#ea580c", "#7c3aed", "#16a34a"]
@@ -237,12 +110,12 @@ def simple_chart_svg(data: dict, labels: list[str], *, readme: bool) -> str:
         parsed = [parse_value(v) for v in reversed(vals)]
         series.append((lab, parsed, colors[i % len(colors)]))
 
-    w, h = (1180, 200) if readme else (1180, 420)
-    m = dict(l=72, r=28, t=24, b=40)
+    w, h = 1180, 220
+    m = dict(l=72, r=28, t=20, b=36)
     iw, ih = w - m["l"] - m["r"], h - m["t"] - m["b"]
     allv = [v for _, pts, _ in series for v in pts if v is not None]
     if not allv:
-        return "<p class='legend'>Chart preview</p>"
+        return "<p>No chart data</p>"
     vmin, vmax = min(0, min(allv)), max(0, max(allv))
     if vmin == vmax:
         vmax += 1
@@ -254,113 +127,54 @@ def simple_chart_svg(data: dict, labels: list[str], *, readme: bool) -> str:
     def y(v):
         return m["t"] + ih * (1 - (v - vmin) / (vmax - vmin))
 
-    lines = []
-    for t in range(5):
-        yy = m["t"] + ih * (1 - t / 4)
-        lines.append(f'<line x1="{m["l"]}" y1="{yy}" x2="{w-m["r"]}" y2="{yy}" stroke="#e5e8ef"/>')
-
+    grid = "".join(
+        f'<line x1="{m["l"]}" y1="{m["t"] + ih * (1 - t / 4)}" x2="{w-m["r"]}" y2="{m["t"] + ih * (1 - t / 4)}" stroke="#e5e8ef"/>'
+        for t in range(5)
+    )
     cats = "".join(
-        f'<text x="{x(i)}" y="{h-8}" text-anchor="middle" font-size="11" fill="#5c6370">{html.escape(q)}</text>'
+        f'<text x="{x(i)}" y="{h-6}" text-anchor="middle" font-size="10" fill="#5c6370">{html.escape(q)}</text>'
         for i, q in enumerate(reversed(quarters))
     )
     paths = []
     legend = []
     for lab, pts, col in series:
-        coords = []
-        for i, v in enumerate(pts):
-            if v is None:
-                continue
-            coords.append(f"{x(i)},{y(v)}")
+        coords = [f"{x(i)},{y(v)}" for i, v in enumerate(pts) if v is not None]
         if coords:
-            paths.append(f'<polyline fill="none" stroke="{col}" stroke-width="2" points="{" ".join(coords)}"/>')
+            paths.append(f'<polyline fill="none" stroke="{col}" stroke-width="2.5" points="{" ".join(coords)}"/>')
         legend.append(f'<span style="color:{col};font-weight:600">{html.escape(lab)}</span>')
 
     stats_rows = ""
     for (lab, vals), (_, pts, col) in zip(chart_rows(data, labels), series, strict=False):
         nums = [v for v in pts if v is not None]
         latest = html.escape(vals[0] if vals else "—")
-        if len(nums) >= 2 and nums[0] != 0:
-            chg_s = f"{((nums[-1] - nums[0]) / abs(nums[0])) * 100:+.1f}%"
-        else:
-            chg_s = "—"
+        chg_s = f"{((nums[-1] - nums[0]) / abs(nums[0])) * 100:+.1f}%" if len(nums) >= 2 and nums[0] != 0 else "—"
         stats_rows += (
             f"<tr><td><span style='color:{col}'>●</span> {html.escape(lab)}</td>"
             f"<td class='num'>{latest}</td><td class='num'>{chg_s}</td></tr>"
         )
 
-    return f"""<div class="chart-box"><div class="chart-title">Chart</div>
+    return f"""<div class="chart-box">
+<div class="chart-title">Chart</div>
 <div class="legend">{' · '.join(legend)}</div>
-<svg viewBox="0 0 {w} {h}">{''.join(lines)}{cats}{''.join(paths)}</svg>
+<svg viewBox="0 0 {w} {h}">{grid}{cats}{''.join(paths)}</svg>
 <div class="chart-stats"><div class="wrap"><table>
 <thead><tr><th>Selected metric</th><th>Latest</th><th>Total Change</th></tr></thead>
 <tbody>{stats_rows}</tbody></table></div></div></div>"""
 
 
 def tabs_html(active: str) -> str:
-    out = ""
-    for key, label, _, _ in TABS:
-        cls = "tab active" if key == active else "tab"
-        out += f'<div class="{cls}">{html.escape(label)}</div>'
-    return out
-
-
-def chart_page_html(active: str, data: dict) -> str:
-    default = data.get("summary", {}).get("defaultChartRows") or ["Total Revenues"]
-    chart = simple_chart_svg(data, default[:2], readme=True)
-    return f"""<!DOCTYPE html><html><head><meta charset="utf-8"><style>{CSS}</style></head>
-<body class="readme chart-only">
-<div class="tabs">{tabs_html(active)}</div>
-{chart}
-</body></html>"""
-
-
-def table_page_html(active: str, data: dict, section_title: str) -> str:
-    stats = data.get("summary", {}).get("stats", [])
-    stats_html = "".join(
-        f'<div class="stat"><div class="val">{html.escape(s["value"])}</div>'
-        f'<div class="lbl">{html.escape(s["label"])}</div></div>'
-        for s in stats[:4]
+    return "".join(
+        f'<div class="{"tab active" if key == active else "tab"}">{html.escape(label)}</div>'
+        for key, label, _ in TABS
     )
-    return f"""<!DOCTYPE html><html><head><meta charset="utf-8"><style>{CSS}</style></head>
-<body class="readme table-only">
-<h1>PANW</h1>
-<div class="sub"></div>
-<div class="tabs">{tabs_html(active)}</div>
-<div class="stats">{stats_html}</div>
-<h2>{html.escape(section_title)}</h2>
-{table_html(data, active, readme=True)}
-</body></html>"""
 
 
-def page_html(active: str, tab_label: str, data: dict, section_title: str, *, readme: bool) -> str:
-    stats = data.get("summary", {}).get("stats", [])
-    stats_html = "".join(
-        f'<div class="stat"><div class="val">{html.escape(s["value"])}</div>'
-        f'<div class="lbl">{html.escape(s["label"])}</div></div>'
-        for s in stats[:4]
-    )
-    tabs_html = ""
-    for key, label, _, _ in TABS:
-        cls = "tab active" if key == active else "tab"
-        tabs_html += f'<div class="{cls}">{html.escape(label)}</div>'
-
+def page_html(active: str, data: dict) -> str:
     default = data.get("summary", {}).get("defaultChartRows") or ["Total Revenues"]
-    chart = simple_chart_svg(data, default[:2], readme=readme)
-
-    subtitle = data.get("summary", {}).get("subtitle", "")
-    fiscal = data.get("summary", {}).get("fiscalMapping", "")
-    body_cls = "readme" if readme else ""
-
     return f"""<!DOCTYPE html><html><head><meta charset="utf-8"><style>{CSS}</style></head>
-<body class="{body_cls}">
-<h1>PANW — Financial Statements</h1>
-<div class="sub">{html.escape(subtitle)}</div>
-<div class="fiscal">{html.escape(fiscal[:120] + ("…" if len(fiscal) > 120 else ""))}</div>
-<div class="tabs">{tabs_html}</div>
-<div class="stats">{stats_html}</div>
-<h2>{html.escape(section_title)}</h2>
-{table_html(data, active, readme=readme)}
-{chart}
+<body>
+<div class="tabs">{tabs_html(active)}</div>
+{chart_html(data, default[:2])}
 </body></html>"""
 
 
@@ -379,40 +193,28 @@ def start_server(port: int = 8765) -> ThreadingHTTPServer:
     return server
 
 
-def capture(url: str, png: Path, viewport: tuple[int, int]) -> None:
-    w, h = viewport
-    subprocess.run(["playwright-cli", "open", url], check=True)
-    subprocess.run(["playwright-cli", "resize", str(w), str(h)], check=True)
-    time.sleep(0.75)
-    subprocess.run(["playwright-cli", "screenshot", f"--filename={png}"], check=True)
-    subprocess.run(["playwright-cli", "close"], check=True)
-
-
 def main() -> int:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     PREVIEW_DIR.mkdir(parents=True, exist_ok=True)
 
-    jobs: list[tuple[str, Path, Path, tuple[int, int]]] = []
-    for key, tab_label, json_name, section_title in TABS:
-        data = load_json(json_name)
-        table_html_path = PREVIEW_DIR / f"panw-{key}-table.html"
-        chart_html_path = PREVIEW_DIR / f"panw-{key}-chart.html"
-        table_html_path.write_text(table_page_html(key, data, section_title))
-        chart_html_path.write_text(chart_page_html(key, data))
-        jobs.append((key, table_html_path, OUT_DIR / f"panw-{key}-table.png", README_TABLE_VIEWPORT))
-        jobs.append((key, chart_html_path, OUT_DIR / f"panw-{key}-chart.png", README_CHART_VIEWPORT))
-
     server = start_server()
     port = server.server_address[1]
+    w, h = README_CHART_VIEWPORT
     try:
-        for key, html_path, png, viewport in jobs:
-            rel = html_path.relative_to(REPO).as_posix()
-            url = f"http://127.0.0.1:{port}/{rel}"
-            capture(url, png, viewport)
-            print(f"Wrote {png} {viewport}")
+        for key, _, json_name in TABS:
+            data = load_json(json_name)
+            html_path = PREVIEW_DIR / f"panw-{key}-chart.html"
+            html_path.write_text(page_html(key, data))
+            png = OUT_DIR / f"panw-{key}-chart.png"
+            url = f"http://127.0.0.1:{port}/{html_path.relative_to(REPO).as_posix()}"
+            subprocess.run(["playwright-cli", "open", url], check=True)
+            subprocess.run(["playwright-cli", "resize", str(w), str(h)], check=True)
+            time.sleep(0.75)
+            subprocess.run(["playwright-cli", "screenshot", f"--filename={png}"], check=True)
+            subprocess.run(["playwright-cli", "close"], check=True)
+            print(f"Wrote {png}")
     finally:
         server.shutdown()
-
     return 0
 
 

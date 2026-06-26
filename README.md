@@ -80,43 +80,59 @@ The assistant runs the sync, builds the table, and points you to the canvas file
 
 ## What the canvas looks like
 
-After sync, you get **one file** with **three tabs** — **Income · Balance Sheet · Cash Flow**. Open it in **Cursor** for the interactive view: summary stats at the top, **12 quarters** in the table, and charts you can customize by ticking rows.
+After sync, you get **one file** with **three tabs** — **Income · Balance Sheet · Cash Flow**. In **Cursor**: summary stats at the top, **12 quarters** in the table, tick rows to chart them.
 
-Real example — **PANW** (Palo Alto Networks), from SEC filings:
+Real **PANW** example below — tables show the last 4 quarters (preview); the live canvas has **all rows × 12 quarters**.
 
 ### Income tab
 
-Table (sample rows):
+| | Apr '26 | Jan '26 | Oct '25 | Jul '25 |
+|--|---------|---------|---------|---------|
+| **Total Revenues** | 3,002 | 2,594 | 2,474 | 2,536 |
+| Total Revenues %Chg | +31.1% | +14.9% | +15.7% | +15.8% |
+| **Gross Profit** | 2,028 | 1,909 | 1,836 | 1,856 |
+| Gross Profit Margin | 67.6% | 73.6% | 74.2% | 73.2% |
+| **Operating Profit** | (183) | 397 | 309 | 497 |
+| **Consolidated Net Income** | (177) | 432 | 334 | 254 |
+| Diluted EPS | (0.22) | 0.61* | 0.47 | 0.36 |
 
-![PANW income — sample table](docs/screenshots/panw-income-table.png)
+Chart (revenue + operating margin):
 
-Chart (always visible — no click to expand):
-
-![PANW income — revenue and operating margin chart](docs/screenshots/panw-income-chart.png)
+![PANW income chart](docs/screenshots/panw-income-chart.png)
 
 ### Balance sheet tab
 
-Table (sample rows):
+| | Apr '26 | Jan '26 | Oct '25 | Jul '25 |
+|--|---------|---------|---------|---------|
+| Cash and Cash Equivalents | 2,364 | 4,158 | 3,066 | 2,269 |
+| **Total Current Assets** | 7,713 | 8,369 | 7,310 | 7,523 |
+| **Total Assets** | 46,266 | 24,979 | 23,536 | 23,576 |
+| **Total Current Liabilities** | 9,006 | 8,009 | 7,418 | 7,988 |
+| **Total Liabilities** | 18,598 | 15,586 | 14,871 | 15,752 |
+| **Total Shareholders' Equity** | 27,668 | 9,393 | 8,665 | 7,824 |
 
-![PANW balance sheet — sample table](docs/screenshots/panw-balance-sheet-table.png)
+Chart (total assets + shareholders' equity):
 
-Chart:
-
-![PANW balance sheet — total assets and equity chart](docs/screenshots/panw-balance-sheet-chart.png)
+![PANW balance sheet chart](docs/screenshots/panw-balance-sheet-chart.png)
 
 ### Cash flow tab
 
-Table (sample rows):
+| | Apr '26 | Jan '26 | Oct '25 | Jul '25 |
+|--|---------|---------|---------|---------|
+| **Cash from Operating Activities** | 871 | 554 | 1,771 | 1,021 |
+| Capital Expenditure | (83) | (170) | (84) | (86) |
+| **Free Cash Flow*** | 788* | 384* | 1,687* | 935* |
+| Cash from Investing Activities | (1,766) | 651 | (983) | (763) |
+| Cash from Financing Activities | (899) | (114) | 8 | (374) |
+| **Net Change in Cash** | (1,792) | 1,091 | 796 | (116) |
 
-![PANW cash flow — sample table](docs/screenshots/panw-cash-flow-table.png)
+Chart (operating cash flow + free cash flow):
 
-Chart:
-
-![PANW cash flow — operating CF and free cash flow chart](docs/screenshots/panw-cash-flow-chart.png)
+![PANW cash flow chart](docs/screenshots/panw-cash-flow-chart.png)
 
 <small>
 
-Scroll horizontally in the canvas to see all 12 quarters. Tick checkboxes beside row names to add them to the chart. Values marked `*` are calculated when the filing doesn’t report that line directly.
+USD millions except EPS. `*` = derived line. Open the canvas in Cursor for the full statement and interactive charts.
 
 </small>
 
