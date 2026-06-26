@@ -67,7 +67,7 @@ fi
 # shellcheck disable=SC1090
 source "${ENV_FILE}"
 
-read -r -p "Link Cursor AI helper? (recommended if you use Cursor) [Y/n] " LINK_SKILL
+read -r -p "Link AI skill for Cursor? (add skills/ manually for Claude) [Y/n] " LINK_SKILL
 if [[ ! "${LINK_SKILL}" =~ ^[Nn]$ ]]; then
   mkdir -p "${HOME}/.cursor/skills"
   ln -sf "${REPO_ROOT}/skills" "${HOME}/.cursor/skills/stock-financials"
@@ -79,6 +79,6 @@ echo "=========================================="
 echo "  Setup complete!"
 echo "=========================================="
 echo ""
-echo "Next: double-click \"Get Financials.command\""
-echo "  or ask Cursor: \"Get financials for AAPL\""
+echo "Next: ask your AI assistant — \"Get financials for AAPL\""
+echo "  (Cursor, Claude Code, or double-click Get Financials.command)"
 echo ""
