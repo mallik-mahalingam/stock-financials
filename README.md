@@ -80,13 +80,19 @@ The assistant runs the sync, builds the table, and points you to the canvas file
 
 ## What the canvas looks like
 
-One tabbed file in **Cursor** — **Income · Balance Sheet · Cash Flow**. Below is a real **MSFT income statement** screenshot from the live canvas: table, **dual-axis chart** (dollars on the left, margin % on the right), and selected-metric summary.
+One tabbed file in **Cursor** — **Income · Balance Sheet · Cash Flow**. Screenshots below are taken directly from the live MSFT canvas (not HTML mocks).
 
-![MSFT income statement — live Cursor canvas](docs/screenshots/msft-income.png)
+**Income tab** — header, summary cards, and table:
+
+![MSFT income tab — live Cursor canvas](docs/screenshots/msft-canvas-preview.png)
+
+**Chart** (scroll down in the canvas) — dual axis: dollars left, margin % right:
+
+![MSFT income chart — live Cursor canvas](docs/screenshots/msft-canvas-chart.png)
 
 <small>
 
-Click the image on GitHub to expand. Balance sheet and cash flow use the same tabbed layout — sync any ticker in Cursor to view them interactively.
+Balance sheet and cash flow use the same tabbed layout — sync any ticker in Cursor to view them interactively.
 
 </small>
 
