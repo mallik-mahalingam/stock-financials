@@ -82,19 +82,37 @@ The assistant runs the sync, builds the table, and points you to the canvas file
 
 After sync, you get **one file** with **three tabs** — **Income · Balance Sheet · Cash Flow**. Open it in **Cursor** for the interactive view: summary stats at the top, **12 quarters** in the table, and charts you can customize by ticking rows.
 
-Real example — **PANW** (Palo Alto Networks), from SEC filings. Each image shows key rows, summary stats, and the **chart** (GitHub-sized preview — open the live canvas in Cursor for all 12 quarters):
+Real example — **PANW** (Palo Alto Networks), from SEC filings:
 
 ### Income tab
 
-![PANW income — table sample and revenue / margin chart](docs/screenshots/panw-income.png)
+Table (sample rows):
+
+![PANW income — sample table](docs/screenshots/panw-income-table.png)
+
+Chart (always visible — no click to expand):
+
+![PANW income — revenue and operating margin chart](docs/screenshots/panw-income-chart.png)
 
 ### Balance sheet tab
 
-![PANW balance sheet — table sample and assets / equity chart](docs/screenshots/panw-balance-sheet.png)
+Table (sample rows):
+
+![PANW balance sheet — sample table](docs/screenshots/panw-balance-sheet-table.png)
+
+Chart:
+
+![PANW balance sheet — total assets and equity chart](docs/screenshots/panw-balance-sheet-chart.png)
 
 ### Cash flow tab
 
-![PANW cash flow — table sample and operating CF / FCF chart](docs/screenshots/panw-cash-flow.png)
+Table (sample rows):
+
+![PANW cash flow — sample table](docs/screenshots/panw-cash-flow-table.png)
+
+Chart:
+
+![PANW cash flow — operating CF and free cash flow chart](docs/screenshots/panw-cash-flow-chart.png)
 
 <small>
 

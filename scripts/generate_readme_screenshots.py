@@ -56,8 +56,10 @@ COMPACT_ROWS: dict[str, list[str]] = {
     ],
 }
 
-README_QUARTERS = 6
-README_VIEWPORT = (1440, 1020)
+README_QUARTERS = 4
+# GitHub README collapses tall images (~400px+). Keep each PNG under this height.
+README_TABLE_VIEWPORT = (1200, 340)
+README_CHART_VIEWPORT = (1200, 320)
 
 CSS = """
 * { box-sizing: border-box; }
@@ -112,7 +114,17 @@ body.readme .chart-box { margin-top: 16px; padding: 14px; }
 .legend { font-size: 12px; color: #5c6370; margin-bottom: 12px; }
 .chart-stats { margin-top: 16px; font-size: 12px; }
 .chart-stats table { min-width: 720px; }
-body.readme svg { min-height: 260px; max-height: 300px; }
+body.readme svg { min-height: 180px; max-height: 200px; }
+body.readme.chart-only { padding: 16px 20px 12px; }
+body.readme.chart-only .tabs { margin-bottom: 10px; }
+body.readme.chart-only .chart-box { margin-top: 0; padding: 12px; }
+body.readme.chart-only .chart-stats table { min-width: 560px; }
+body.readme.table-only { padding: 16px 20px 12px; }
+body.readme.table-only h1 { display: none; }
+body.readme.table-only .sub { display: none; }
+body.readme.table-only .stats { grid-template-columns: repeat(2, 1fr); margin-bottom: 10px; }
+body.readme.table-only .stat .val { font-size: 16px; }
+body.readme.table-only .stat .lbl { font-size: 11px; }
 svg { width: 100%; height: auto; display: block; }
 """
 
@@ -173,7 +185,7 @@ def table_html(data: dict, active: str, *, readme: bool) -> str:
     body = "\n".join(render_row(row, quarters) for row in rows)
     headers = "".join(f"<th>{html.escape(q)}</th>" for q in quarters)
     hint = (
-        '<p class="hint">Sample rows — last 6 quarters shown. Live canvas has all line items × 12 quarters.</p>'
+        '<p class="hint">Sample rows (4 quarters). Live canvas: all line items × 12 quarters.</p>'
         if readme
         else ""
     )
@@ -225,7 +237,7 @@ def simple_chart_svg(data: dict, labels: list[str], *, readme: bool) -> str:
         parsed = [parse_value(v) for v in reversed(vals)]
         series.append((lab, parsed, colors[i % len(colors)]))
 
-    w, h = (1180, 300) if readme else (1180, 420)
+    w, h = (1180, 200) if readme else (1180, 420)
     m = dict(l=72, r=28, t=24, b=40)
     iw, ih = w - m["l"] - m["r"], h - m["t"] - m["b"]
     allv = [v for _, pts, _ in series for v in pts if v is not None]
@@ -284,6 +296,42 @@ def simple_chart_svg(data: dict, labels: list[str], *, readme: bool) -> str:
 <tbody>{stats_rows}</tbody></table></div></div></div>"""
 
 
+def tabs_html(active: str) -> str:
+    out = ""
+    for key, label, _, _ in TABS:
+        cls = "tab active" if key == active else "tab"
+        out += f'<div class="{cls}">{html.escape(label)}</div>'
+    return out
+
+
+def chart_page_html(active: str, data: dict) -> str:
+    default = data.get("summary", {}).get("defaultChartRows") or ["Total Revenues"]
+    chart = simple_chart_svg(data, default[:2], readme=True)
+    return f"""<!DOCTYPE html><html><head><meta charset="utf-8"><style>{CSS}</style></head>
+<body class="readme chart-only">
+<div class="tabs">{tabs_html(active)}</div>
+{chart}
+</body></html>"""
+
+
+def table_page_html(active: str, data: dict, section_title: str) -> str:
+    stats = data.get("summary", {}).get("stats", [])
+    stats_html = "".join(
+        f'<div class="stat"><div class="val">{html.escape(s["value"])}</div>'
+        f'<div class="lbl">{html.escape(s["label"])}</div></div>'
+        for s in stats[:4]
+    )
+    return f"""<!DOCTYPE html><html><head><meta charset="utf-8"><style>{CSS}</style></head>
+<body class="readme table-only">
+<h1>PANW</h1>
+<div class="sub"></div>
+<div class="tabs">{tabs_html(active)}</div>
+<div class="stats">{stats_html}</div>
+<h2>{html.escape(section_title)}</h2>
+{table_html(data, active, readme=True)}
+</body></html>"""
+
+
 def page_html(active: str, tab_label: str, data: dict, section_title: str, *, readme: bool) -> str:
     stats = data.get("summary", {}).get("stats", [])
     stats_html = "".join(
@@ -331,32 +379,37 @@ def start_server(port: int = 8765) -> ThreadingHTTPServer:
     return server
 
 
+def capture(url: str, png: Path, viewport: tuple[int, int]) -> None:
+    w, h = viewport
+    subprocess.run(["playwright-cli", "open", url], check=True)
+    subprocess.run(["playwright-cli", "resize", str(w), str(h)], check=True)
+    time.sleep(0.75)
+    subprocess.run(["playwright-cli", "screenshot", f"--filename={png}"], check=True)
+    subprocess.run(["playwright-cli", "close"], check=True)
+
+
 def main() -> int:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     PREVIEW_DIR.mkdir(parents=True, exist_ok=True)
 
-    html_paths = []
+    jobs: list[tuple[str, Path, Path, tuple[int, int]]] = []
     for key, tab_label, json_name, section_title in TABS:
         data = load_json(json_name)
-        content = page_html(key, tab_label, data, section_title, readme=True)
-        path = PREVIEW_DIR / f"panw-{key}-readme.html"
-        path.write_text(content)
-        html_paths.append((key, path))
+        table_html_path = PREVIEW_DIR / f"panw-{key}-table.html"
+        chart_html_path = PREVIEW_DIR / f"panw-{key}-chart.html"
+        table_html_path.write_text(table_page_html(key, data, section_title))
+        chart_html_path.write_text(chart_page_html(key, data))
+        jobs.append((key, table_html_path, OUT_DIR / f"panw-{key}-table.png", README_TABLE_VIEWPORT))
+        jobs.append((key, chart_html_path, OUT_DIR / f"panw-{key}-chart.png", README_CHART_VIEWPORT))
 
-    w, h = README_VIEWPORT
     server = start_server()
     port = server.server_address[1]
     try:
-        for key, path in html_paths:
-            png = OUT_DIR / f"panw-{key}.png"
-            rel = path.relative_to(REPO).as_posix()
+        for key, html_path, png, viewport in jobs:
+            rel = html_path.relative_to(REPO).as_posix()
             url = f"http://127.0.0.1:{port}/{rel}"
-            subprocess.run(["playwright-cli", "open", url], check=True)
-            subprocess.run(["playwright-cli", "resize", str(w), str(h)], check=True)
-            time.sleep(0.75)
-            subprocess.run(["playwright-cli", "screenshot", f"--filename={png}"], check=True)
-            subprocess.run(["playwright-cli", "close"], check=True)
-            print(f"Wrote {png} ({w}x{h} viewport)")
+            capture(url, png, viewport)
+            print(f"Wrote {png} {viewport}")
     finally:
         server.shutdown()
 
