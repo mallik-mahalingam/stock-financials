@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""Generate README preview PNGs: canvas-style table + chart in one short wide image."""
+"""Generate full-fidelity README screenshot(s) from SEC JSON.
+
+Currently: PANW income statement only (all rows × 12 quarters + chart).
+"""
 
 from __future__ import annotations
 
@@ -18,138 +21,107 @@ JSON_DIR = REPO / "json-data"
 OUT_DIR = REPO / "docs" / "screenshots"
 PREVIEW_DIR = REPO / "docs" / "preview"
 
-TABS = [
-    ("income", "Income", "PANW-income.json", "Income Statement"),
-    ("balance-sheet", "Balance Sheet", "PANW-balance-sheet.json", "Balance Sheet"),
-    ("cash-flow", "Cash Flow", "PANW-cash-flow.json", "Cash Flow Statement"),
-]
-
-PREVIEW_ROWS: dict[str, list[str]] = {
-    "income": [
-        "Total Revenues",
-        "Total Revenues %Chg",
-        "Gross Profit",
-        "Gross Profit Margin",
-        "Operating Profit",
-        "Operating Margin",
-        "Consolidated Net Income",
-        "Diluted EPS",
-    ],
-    "balance-sheet": [
-        "Cash and Cash Equivalents",
-        "Total Current Assets",
-        "Total Assets",
-        "Total Liabilities",
-        "Total Shareholders' Equity",
-    ],
-    "cash-flow": [
-        "Cash from Operating Activities",
-        "Capital Expenditure",
-        "Free Cash Flow",
-        "Cash from Investing Activities",
-        "Cash from Financing Activities",
-        "Net Change in Cash",
-    ],
-}
-
-QUARTERS_SHOWN = 6
-VIEWPORT = (1280, 480)
-
 CSS = """
 * { box-sizing: border-box; }
 body {
-  margin: 0; padding: 18px 22px 16px;
+  margin: 0; padding: 24px; max-width: 1680px;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  background: #f4f6fa; color: #111;
+  background: #fff; color: #111;
 }
-.top { margin-bottom: 14px; }
-h1 { font-size: 22px; margin: 0 0 4px; font-weight: 650; }
-.sub { font-size: 12px; color: #5c6370; }
-.tabs { display: flex; gap: 8px; margin: 12px 0; }
+h1 { font-size: 28px; font-weight: 650; margin: 0 0 6px; }
+.sub { color: #5c6370; font-size: 14px; margin-bottom: 4px; }
+.fiscal { color: #5c6370; font-size: 12px; margin-bottom: 18px; line-height: 1.45; }
+.tabs { display: flex; gap: 8px; margin-bottom: 20px; }
 .tab {
-  padding: 6px 14px; border-radius: 999px; font-size: 12px; font-weight: 600;
+  padding: 8px 16px; border-radius: 999px; font-size: 13px; font-weight: 600;
   border: 1px solid #d8dde6; background: #fff; color: #444;
 }
-.tab.on { background: #2563eb; color: #fff; border-color: #2563eb; }
-.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 14px; }
-.stat { background: #fff; border: 1px solid #e5e8ef; border-radius: 8px; padding: 8px 10px; }
-.stat b { display: block; font-size: 17px; margin-bottom: 2px; }
-.stat span { font-size: 10px; color: #5c6370; line-height: 1.3; }
-.grid { display: grid; grid-template-columns: 1.15fr 0.85fr; gap: 14px; align-items: start; }
-.panel { background: #fff; border: 1px solid #e5e8ef; border-radius: 10px; padding: 12px; }
-.panel h2 { font-size: 14px; margin: 0 0 8px; }
-.hint { font-size: 10px; color: #6b7280; margin: 0 0 8px; font-style: italic; }
-table { border-collapse: collapse; width: 100%; font-size: 11px; }
-th, td { padding: 5px 7px; border-bottom: 1px solid #eef1f6; white-space: nowrap; }
-th { background: #f3f5f9; text-align: right; font-weight: 600; color: #444; }
-th:first-child, td:first-child { text-align: left; min-width: 150px; }
-td.n { text-align: right; font-variant-numeric: tabular-nums; }
-tr:nth-child(even) td { background: #fafbfc; }
-tr.tot td { font-weight: 600; }
-tr.it td { font-style: italic; color: #5c6370; }
-.chart-title { font-size: 14px; font-weight: 600; margin-bottom: 6px; }
-.legend { font-size: 11px; color: #5c6370; margin-bottom: 8px; }
-svg { width: 100%; height: auto; display: block; }
-.mini { margin-top: 10px; font-size: 10px; }
-.mini td, .mini th { padding: 4px 6px; }
+.tab.on { background: #2563eb; border-color: #2563eb; color: #fff; }
+.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 22px; }
+.stat {
+  border: 1px solid #e5e8ef; border-radius: 10px; padding: 14px 16px; background: #fff;
+}
+.stat b { display: block; font-size: 22px; font-weight: 650; margin-bottom: 4px; }
+.stat span { font-size: 12px; color: #5c6370; line-height: 1.35; }
+h2 { font-size: 18px; margin: 0 0 12px; font-weight: 650; }
+.table-wrap {
+  overflow: visible; border: 1px solid #e5e8ef; border-radius: 10px; background: #fff;
+}
+table.fin { border-collapse: collapse; min-width: 1320px; width: 100%; font-size: 12px; }
+table.fin th, table.fin td {
+  padding: 8px 10px; border-bottom: 1px solid #eef1f6; vertical-align: middle;
+}
+table.fin th { background: #f3f5f9; font-weight: 600; color: #444; text-align: right; }
+table.fin th.line, table.fin td.line { text-align: left; min-width: 280px; max-width: 340px; }
+table.fin td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+table.fin tr:nth-child(even) td { background: #fafbfc; }
+table.fin tr.total td { font-weight: 600; }
+table.fin tr.italic td { font-style: italic; color: #5c6370; }
+.cb {
+  display: inline-block; width: 14px; height: 14px; border: 1.5px solid #9aa3b2;
+  border-radius: 3px; margin-right: 8px; vertical-align: -2px; position: relative;
+}
+.cb.on { background: #2563eb; border-color: #2563eb; }
+.cb.on::after {
+  content: ""; position: absolute; left: 3px; top: 1px; width: 5px; height: 8px;
+  border: solid #fff; border-width: 0 2px 2px 0; transform: rotate(45deg);
+}
+.chart-section { margin-top: 24px; }
+.chart-head { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+.chart-head h2 { margin: 0; }
+.pill {
+  border: 1px solid #d8dde6; border-radius: 6px; padding: 4px 10px; font-size: 12px; background: #fff;
+}
+.hint { font-size: 12px; color: #5c6370; margin-left: auto; }
+svg { width: 100%; max-width: 1180px; height: auto; display: block; }
+.mini-wrap { margin-top: 16px; border: 1px solid #e5e8ef; border-radius: 10px; overflow: hidden; }
+table.mini { width: 100%; border-collapse: collapse; font-size: 12px; }
+table.mini th, table.mini td { padding: 8px 12px; border-bottom: 1px solid #eef1f6; }
+table.mini th { background: #f3f5f9; text-align: left; }
+table.mini td.num { text-align: right; }
+.dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 8px; }
 """
 
 
-def load_json(name: str) -> dict:
-    return json.loads((JSON_DIR / name).read_text())
+def load(path: Path) -> dict:
+    return json.loads(path.read_text())
 
 
-def quarter_labels(data: dict, n: int | None = None) -> list[str]:
+def quarters(data: dict) -> list[str]:
     qs = data["quarters"]
-    labels = [q["label"] for q in qs] if qs and isinstance(qs[0], dict) else list(qs)
-    return labels[:n] if n else labels
+    return [q["label"] for q in qs] if qs and isinstance(qs[0], dict) else list(qs)
 
 
-def all_rows(data: dict) -> list[dict]:
-    if data.get("sections"):
-        rows: list[dict] = []
-        for sec in data["sections"]:
-            rows.extend(sec["rows"])
-        return rows
-    return data["rows"]
-
-
-def pick_rows(data: dict, active: str) -> list[dict]:
-    by = {r["label"]: r for r in all_rows(data)}
-    out: list[dict] = []
-    for lab in PREVIEW_ROWS[active]:
-        row = by.get(lab)
-        if not row and lab == "Free Cash Flow":
-            row = next((r for r in all_rows(data) if r["label"] == lab and r.get("plottable") is not False), None)
-        if row:
-            out.append(row)
-    return out
-
-
-def row_cls(row: dict) -> str:
+def row_class(row: dict) -> str:
     if row.get("kind") == "total":
-        return "tot"
+        return "total"
     if row.get("kind") == "italic":
-        return "it"
+        return "italic"
     return ""
 
 
-def table_block(data: dict, active: str, title: str) -> str:
-    qs = quarter_labels(data, QUARTERS_SHOWN)
+def line_cell(row: dict, selected: set[str]) -> str:
+    label = html.escape(row["label"])
+    plottable = row.get("plottable", True)
+    if not plottable:
+        return f'<td class="line">{label}</td>'
+    on = "on" if row["label"] in selected else ""
+    return f'<td class="line"><span class="cb {on}"></span>{label}</td>'
+
+
+def income_table(data: dict, qs: list[str], selected: set[str]) -> str:
     hdr = "".join(f"<th>{html.escape(q)}</th>" for q in qs)
     body = ""
-    for row in pick_rows(data, active):
-        cells = "".join(f'<td class="n">{html.escape(v)}</td>' for v in row["values"][:QUARTERS_SHOWN])
-        body += f'<tr class="{row_cls(row)}"><td>{html.escape(row["label"])}</td>{cells}</tr>'
-    return f"""<div class="panel">
-<h2>{html.escape(title)}</h2>
-<p class="hint">Preview — live canvas has every line item × 12 quarters</p>
-<table><thead><tr><th>Line item</th>{hdr}</tr></thead><tbody>{body}</tbody></table>
-</div>"""
+    for row in data["rows"]:
+        cells = "".join(f'<td class="num">{html.escape(v)}</td>' for v in row["values"])
+        body += f'<tr class="{row_class(row)}">{line_cell(row, selected)}{cells}</tr>'
+    return f"""<div class="table-wrap"><table class="fin">
+<thead><tr><th class="line">Line item</th>{hdr}</tr></thead>
+<tbody>{body}</tbody></table></div>"""
 
 
-def parse_num(raw: str) -> float | None:
-    s = raw.strip()
+def parse_num(s: str) -> float | None:
+    s = s.strip()
     neg = s.startswith("(") and s.endswith(")")
     s = s.strip("()").replace(",", "").replace("%", "").replace("*", "").replace("+", "")
     if not s or s == "—":
@@ -160,35 +132,25 @@ def parse_num(raw: str) -> float | None:
         return None
 
 
-def chart_series(data: dict, labels: list[str]) -> list[tuple[str, list[float | None], str]]:
+def chart_block(data: dict, labels: list[str], qs: list[str]) -> str:
     colors = ["#2563eb", "#ea580c"]
-    seen: set[str] = set()
-    out: list[tuple[str, list[float | None], str]] = []
+    by = {r["label"]: r for r in data["rows"]}
+    series = []
     for i, lab in enumerate(labels):
-        for row in all_rows(data):
-            if row["label"] == lab and lab not in seen and row.get("plottable") is not False:
-                seen.add(lab)
-                pts = [parse_num(v) for v in reversed(row["values"])]
-                out.append((lab, pts, colors[i % 2]))
-                break
-    return out
+        row = by.get(lab)
+        if not row:
+            continue
+        pts = [parse_num(v) for v in reversed(row["values"])]
+        series.append((lab, pts, colors[i % 2], row))
 
-
-def chart_block(data: dict) -> str:
-    labels = (data.get("summary") or {}).get("defaultChartRows") or ["Total Revenues"]
-    labels = labels[:2]
-    series = chart_series(data, labels)
-    quarters = quarter_labels(data)
-    w, h = 520, 190
-    m = dict(l=44, r=12, t=16, b=28)
+    w, h = 1180, 420
+    m = dict(l=72, r=28, t=24, b=44)
     iw, ih = w - m["l"] - m["r"], h - m["t"] - m["b"]
-    vals = [v for _, pts, _ in series for v in pts if v is not None]
-    if not vals:
-        return '<div class="panel"><p>No chart</p></div>'
-    lo, hi = min(0, min(vals)), max(0, max(vals))
+    vals = [v for _, pts, _, _ in series for v in pts if v is not None]
+    lo, hi = (min(0, min(vals)), max(0, max(vals))) if vals else (0, 1)
     if lo == hi:
         hi += 1
-    n = len(quarters)
+    n = len(qs)
 
     def px(i: int) -> float:
         return m["l"] + (iw / n) * (i + 0.5)
@@ -201,56 +163,62 @@ def chart_block(data: dict) -> str:
         for t in range(5)
     )
     cats = "".join(
-        f'<text x="{px(i)}" y="{h - 6}" text-anchor="middle" font-size="8" fill="#6b7280">{html.escape(q)}</text>'
-        for i, q in enumerate(reversed(quarters))
+        f'<text x="{px(i)}" y="{h - 10}" text-anchor="middle" font-size="11" fill="#6b7280">{html.escape(q)}</text>'
+        for i, q in enumerate(reversed(qs))
     )
     lines = []
-    leg = []
     mini = ""
-    for lab, pts, col in series:
+    for lab, pts, col, row in series:
         coords = [f"{px(i)},{py(v)}" for i, v in enumerate(pts) if v is not None]
         if coords:
             lines.append(f'<polyline fill="none" stroke="{col}" stroke-width="2" points="{" ".join(coords)}"/>')
-        leg.append(f'<span style="color:{col};font-weight:600">{html.escape(lab)}</span>')
         nums = [v for v in pts if v is not None]
         chg = f"{((nums[-1] - nums[0]) / abs(nums[0])) * 100:+.1f}%" if len(nums) >= 2 and nums[0] else "—"
-        row = all_rows(data)
-        latest = next((r["values"][0] for r in row if r["label"] == lab and r.get("plottable") is not False), "—")
-        mini += f"<tr><td style='color:{col}'>● {html.escape(lab)}</td><td class='n'>{html.escape(latest)}</td><td class='n'>{chg}</td></tr>"
+        mini += (
+            f"<tr><td><span class='dot' style='background:{col}'></span>{html.escape(lab)}</td>"
+            f"<td class='num'>{html.escape(row['values'][0])}</td>"
+            f"<td class='num'>{chg}</td><td class='num'>—</td></tr>"
+        )
 
-    return f"""<div class="panel">
-<div class="chart-title">Chart</div>
-<div class="legend">{' · '.join(leg)}</div>
+    return f"""<div class="chart-section">
+<div class="chart-head">
+<h2>Chart</h2>
+<span class="pill">Line ▾</span>
+<span class="hint">Tick rows in the table to plot. Dollars left axis; second unit on right.</span>
+</div>
 <svg viewBox="0 0 {w} {h}">{grid}{cats}{''.join(lines)}</svg>
-<table class="mini"><thead><tr><th>Metric</th><th>Latest</th><th>Change</th></tr></thead><tbody>{mini}</tbody></table>
+<div class="mini-wrap"><table class="mini">
+<thead><tr><th>Selected metric</th><th>Latest</th><th>Total Change</th><th>CAGR (ann.)</th></tr></thead>
+<tbody>{mini}</tbody></table></div>
 </div>"""
 
 
-def page(active: str, data: dict, title: str) -> str:
-    stats = (data.get("summary") or {}).get("stats") or []
-    stats_html = "".join(
+def income_page(data: dict) -> str:
+    qs = quarters(data)
+    summary = data.get("summary") or {}
+    selected = set(summary.get("defaultChartRows") or ["Total Revenues", "Operating Margin"])
+    stats = "".join(
         f'<div class="stat"><b>{html.escape(s["value"])}</b><span>{html.escape(s["label"])}</span></div>'
-        for s in stats[:4]
+        for s in summary.get("stats", [])[:4]
     )
-    tabs = "".join(
-        f'<div class="tab{" on" if k == active else ""}">{html.escape(lbl)}</div>' for k, lbl, _, _ in TABS
-    )
-    sub = (data.get("summary") or {}).get("subtitle") or ""
+    chart_labels = list(summary.get("defaultChartRows") or ["Total Revenues", "Operating Margin"])[:2]
     return f"""<!DOCTYPE html><html><head><meta charset="utf-8"><style>{CSS}</style></head><body>
-<div class="top">
 <h1>PANW — Financial Statements</h1>
-<div class="sub">{html.escape(sub)}</div>
-<div class="tabs">{tabs}</div>
-<div class="stats">{stats_html}</div>
+<div class="sub">{html.escape(summary.get("subtitle", ""))}</div>
+<div class="fiscal">{html.escape(summary.get("fiscalMapping", ""))}</div>
+<div class="tabs">
+<div class="tab on">Income</div>
+<div class="tab">Balance Sheet</div>
+<div class="tab">Cash Flow</div>
 </div>
-<div class="grid">
-{table_block(data, active, title)}
-{chart_block(data)}
-</div>
+<div class="stats">{stats}</div>
+<h2>Income Statement</h2>
+{income_table(data, qs, selected)}
+{chart_block(data, chart_labels, qs)}
 </body></html>"""
 
 
-def start_server() -> ThreadingHTTPServer:
+def serve() -> ThreadingHTTPServer:
     handler = lambda *a, **k: SimpleHTTPRequestHandler(*a, directory=str(REPO), **k)  # noqa: E731
     srv = ThreadingHTTPServer(("127.0.0.1", 8765), handler)
     Thread(target=srv.serve_forever, daemon=True).start()
@@ -266,21 +234,21 @@ def start_server() -> ThreadingHTTPServer:
 def main() -> int:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     PREVIEW_DIR.mkdir(parents=True, exist_ok=True)
-    srv = start_server()
-    w, h = VIEWPORT
+
+    data = load(JSON_DIR / "PANW-income.json")
+    html_path = PREVIEW_DIR / "panw-income-full.html"
+    html_path.write_text(income_page(data))
+    png = OUT_DIR / "panw-income.png"
+
+    srv = serve()
     try:
-        for key, _, json_name, title in TABS:
-            data = load_json(json_name)
-            html_path = PREVIEW_DIR / f"panw-{key}.html"
-            html_path.write_text(page(key, data, title))
-            png = OUT_DIR / f"panw-{key}.png"
-            url = f"http://127.0.0.1:8765/{html_path.relative_to(REPO).as_posix()}"
-            subprocess.run(["playwright-cli", "open", url], check=True)
-            subprocess.run(["playwright-cli", "resize", str(w), str(h)], check=True)
-            time.sleep(0.6)
-            subprocess.run(["playwright-cli", "screenshot", f"--filename={png}"], check=True)
-            subprocess.run(["playwright-cli", "close"], check=True)
-            print(f"Wrote {png}")
+        url = f"http://127.0.0.1:8765/{html_path.relative_to(REPO).as_posix()}"
+        subprocess.run(["playwright-cli", "open", url], check=True)
+        subprocess.run(["playwright-cli", "resize", "1440", "900"], check=True)
+        time.sleep(1)
+        subprocess.run(["playwright-cli", "screenshot", f"--filename={png}", "--full-page"], check=True)
+        subprocess.run(["playwright-cli", "close"], check=True)
+        print(f"Wrote {png}")
     finally:
         srv.shutdown()
     return 0

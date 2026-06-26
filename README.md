@@ -80,25 +80,13 @@ The assistant runs the sync, builds the table, and points you to the canvas file
 
 ## What the canvas looks like
 
-One tabbed file in **Cursor** — stats up top, scrollable **12-quarter** table, tick any row to chart it.
+One tabbed file in **Cursor** — **Income · Balance Sheet · Cash Flow**. Below is a full **PANW income statement** preview: all line items, **12 quarters**, summary stats, and chart (same layout as the live canvas).
 
-**PANW** preview (same layout as the live canvas; table truncated for README width):
-
-### Income
-
-![PANW income statement — table and chart](docs/screenshots/panw-income.png)
-
-### Balance sheet
-
-![PANW balance sheet — table and chart](docs/screenshots/panw-balance-sheet.png)
-
-### Cash flow
-
-![PANW cash flow — table and chart](docs/screenshots/panw-cash-flow.png)
+![PANW income statement — 12 quarters, full table, chart](docs/screenshots/panw-income.png)
 
 <small>
 
-USD millions except per-share. `*` = derived from SEC tags. Sync any ticker to get the full canvas with all rows and 12 quarters.
+Click the image on GitHub to expand. Balance sheet and cash flow use the same tabbed layout — sync any ticker in Cursor to view them interactively.
 
 </small>
 
