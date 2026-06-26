@@ -381,7 +381,7 @@ def build_cf_document(ticker: str) -> dict[str, Any]:
         },
         "notes": [
             "Standalone quarterly columns derived from fiscal-YTD XBRL flows (current YTD − prior-quarter YTD).",
-            "CapEx and outflows shown negative to match Koyfin convention.",
+            "CapEx and outflows shown negative (standard outflow convention).",
             "Free Cash Flow*, NOPAT*, Levered FCF*, Unlevered FCF* are derived memo lines.",
         ],
         "verification": verification,

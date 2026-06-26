@@ -78,7 +78,7 @@ python3 ~/src/stock-financials/scripts/sec_financials.py check TICKER
 # Build any statement from SEC XBRL
 python3 ~/src/stock-financials/scripts/sec_financials.py build TICKER [income|balance-sheet|cash-flow]
 
-# Reorder rows to canonical Koyfin template (after manual JSON edits)
+# Reorder rows to canonical template (after manual JSON edits)
 python3 ~/src/stock-financials/scripts/sec_financials.py align TICKER [statement]
 
 # List JSON paths for all statements
@@ -229,7 +229,7 @@ Set in JSON `verification`: `grossProfitTies`, `operatingProfitTies`, `pretaxMin
 
 ## Row mapping (order)
 
-Canonical row order is **`scripts/statement_templates.py`** (`INCOME_ROWS`) — union of AAPL / PANW / INTU Koyfin layouts. Optional rows omitted when blank in all 12 quarters.
+Canonical row order is **`scripts/statement_templates.py`** (`INCOME_ROWS`) — union of AAPL / PANW / INTU reference layouts. Optional rows omitted when blank in all 12 quarters.
 
 | Row | Maps from |
 |-----|-----------|
@@ -343,16 +343,16 @@ Do not claim "verified" without running the arithmetic checks for each statement
 
 ---
 
-# Known limitations (SEC vs Koyfin)
+# Known limitations (SEC XBRL)
 
-**SEC EDGAR is source of truth.** Koyfin row order is the comparison standard (`scripts/statement_templates.py`); values are XBRL-derived.
+**SEC EDGAR is source of truth.** Row order follows `scripts/statement_templates.py`; values are XBRL-derived.
 
-- **WC line items** (cash flow): quarterly = fiscal YTD − prior YTD; individual lines may differ from Koyfin while **Operating / Investing / Financing totals** tie to SEC.
+- **WC line items** (cash flow): quarterly = fiscal YTD − prior YTD; individual lines may differ from vendor displays while **Operating / Investing / Financing totals** tie to SEC.
 - **COGS / gross profit***: derived when filer omits `CostOfRevenue` (INTU); cells marked `*`.
 - **Other receivables / APIC**: filer-specific XBRL tag fallbacks; subtotals still tie.
-- **FCF section**: FCF* = Op CF + CapEx; NOPAT* / Levered* / Unlevered* use 21% tax — not Koyfin’s models.
+- **FCF section**: FCF* = Op CF + CapEx; NOPAT* / Levered* / Unlevered* use 21% tax — illustrative only.
 - **CF verification**: O+I+F ≈ ΔCash may fail when FX or restricted-cash effects exist — check `verification.exceptions` (e.g. INTU).
 - **Operating profit bridge**: ±$75M tolerance when components don’t fully reconcile in XBRL.
-- **Optional rows**: omitted when all-blank; Koyfin shows dashes instead.
-- **Audit against Koyfin**: flag mismatches vs **SEC filing**, not vs Koyfin, when tag mapping differs.
+- **Optional rows**: omitted when all-blank across 12 quarters.
+- **Audit**: flag mismatches vs **SEC filing** when tag mapping differs.
 

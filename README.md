@@ -201,9 +201,9 @@ sf sync PANW
     income_xbrl.py                # income from XBRL
     bs_xbrl.py                      # balance sheet (instant tags)
     cf_xbrl.py                      # cash flow (YTD → quarterly)
-    statement_templates.py          # canonical Koyfin row order
+    statement_templates.py          # canonical row order
     statement_align.py
-    number_format.py                # Koyfin-aligned display formatting
+    number_format.py                # display formatting rules
     render_financials_canvas.py     # tabbed canvas renderer
     render_unified_canvas.py        # legacy single-statement render
   schema/
@@ -223,7 +223,7 @@ sf sync PANW
 
 ## Display formatting
 
-Koyfin-aligned rules in `scripts/number_format.py`:
+Display rules in `scripts/number_format.py`:
 
 | Type | Format |
 |------|--------|
@@ -262,16 +262,16 @@ Derived values marked with `*` in JSON display strings.
 
 ---
 
-## Known limitations (SEC XBRL vs Koyfin)
+## Known limitations (SEC XBRL)
 
-**Source of truth is SEC EDGAR**, not Koyfin. Row order follows Koyfin’s layout for comparison; values come from XBRL tags and derivations.
+**Source of truth is SEC EDGAR.** Row order follows the canonical templates in `statement_templates.py`; values come from XBRL tags and derivations.
 
 | Area | Notes |
 |------|-------|
 | Income Q4 | FY 10-K − 9M YTD when no standalone quarterly tag |
 | COGS* | Derived when `CostOfRevenue` missing (e.g. INTU) |
 | Cash flow WC lines | Section totals tie; individual WC lines may differ |
-| FCF memo lines | NOPAT / Levered / Unlevered use 21% tax — not Koyfin models |
+| FCF memo lines | NOPAT / Levered / Unlevered use 21% tax — illustrative only |
 | Optional rows | Omitted when blank in all 12 quarters |
 
 See `skills/SKILL.md` for validation packs and agent workflow details.

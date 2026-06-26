@@ -1,4 +1,4 @@
-"""Canonical Koyfin-aligned row order for income, balance sheet, and cash flow."""
+"""Canonical row order for income, balance sheet, and cash flow."""
 
 from __future__ import annotations
 
@@ -31,7 +31,7 @@ def _section(title: str) -> RowSpec:
     return RowSpec(title, kind="total", plottable=False, section=True)
 
 
-# --- Income (single table, no section dividers) — union of AAPL / PANW / INTU Koyfin ---
+# --- Income (single table, no section dividers) — union of AAPL / PANW / INTU ---
 INCOME_ROWS: list[RowSpec] = [
     RowSpec("Total Revenues", kind="total"),
     RowSpec("Total Revenues %Chg", kind="italic", unit="%", derived=True),

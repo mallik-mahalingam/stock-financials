@@ -1,6 +1,6 @@
-"""Koyfin-aligned display formatting for financial statement values.
+"""Display formatting for financial statement values.
 
-Rules (match Koyfin standardized financials tables):
+Rules (standardized financials tables):
 - USD millions ($): integer with thousands separators; negatives in parentheses
 - EPS: always two decimal places
 - Shares (millions): one decimal when fractional, otherwise integer (351.4 vs 813)

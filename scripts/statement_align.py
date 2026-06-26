@@ -1,4 +1,4 @@
-"""Align statement JSON rows to canonical Koyfin order."""
+"""Align statement JSON rows to canonical order."""
 
 from __future__ import annotations
 

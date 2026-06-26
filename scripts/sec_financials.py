@@ -578,7 +578,7 @@ def main() -> None:
     r.add_argument("--canvas-dir", default=None, help=f"Default: {REPO_ROOT / 'canvas'}")
     r.set_defaults(func=cmd_render)
 
-    al = sub.add_parser("align", help="Reorder JSON rows to canonical Koyfin template")
+    al = sub.add_parser("align", help="Reorder JSON rows to canonical template")
     al.add_argument("ticker")
     al.add_argument("statement", nargs="?", choices=list(STATEMENT_SUFFIX), default=None)
     al.set_defaults(func=cmd_align)
