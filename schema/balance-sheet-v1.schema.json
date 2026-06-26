@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://stock-financials.local/src/stock-financials/schema/balance-sheet-v1.schema.json",
+  "title": "BalanceSheetV1",
+  "type": "object",
+  "required": ["schemaVersion", "statementType", "ticker", "quarters", "rows", "updatedAt"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "statementType": { "const": "balance-sheet" },
+    "ticker": { "type": "string", "pattern": "^[A-Z0-9.-]+$" },
+    "companyName": { "type": "string" },
+    "currency": { "type": "string", "default": "USD" },
+    "unit": { "type": "string", "enum": ["millions", "thousands"] },
+    "fiscalYearEndMonth": { "type": "integer", "minimum": 1, "maximum": 12 },
+    "updatedAt": { "type": "string", "format": "date-time" },
+    "edgar": { "type": "object" },
+    "quarters": { "type": "array", "minItems": 12, "maxItems": 12 },
+    "rows": { "type": "array", "minItems": 1 },
+    "summary": { "type": "object" },
+    "notes": { "type": "array", "items": { "type": "string" } },
+    "verification": {
+      "type": "object",
+      "properties": {
+        "assetsEqualsLiabilitiesPlusEquity": { "type": "boolean" },
+        "exceptions": { "type": "array", "items": { "type": "string" } }
+      }
+    }
+  }
+}

@@ -1,0 +1,10 @@
+# Generated artifacts — rebuild with: scripts/sec_financials.py sync TICKER
+json-data/*
+!json-data/.gitkeep
+canvas/*
+!canvas/.gitkeep
+
+# Python
+__pycache__/
+*.py[cod]
+.DS_Store
