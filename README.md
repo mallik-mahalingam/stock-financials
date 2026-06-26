@@ -1,285 +1,261 @@
-# stock-financials
+# Stock Financials
 
-12-quarter GAAP financial statements (income, balance sheet, cash flow) from SEC XBRL. JSON cache + tabbed Cursor canvases.
+Pull the last **12 quarters** of official GAAP financials — **Income Statement**, **Balance Sheet**, and **Cash Flow** — straight from SEC filings, and view them in a clean, tabbed table inside **Cursor**.
 
-**JSON is the source of truth.** Canvases are generated — never hand-edit `.tsx`; re-run `sync`.
+You do **not** need to be a software engineer. After a one-time setup, getting financials for a stock is usually **one command** (or one sentence in Cursor chat).
 
 ---
 
-## Install
+## What you get
 
-### 1. Clone / copy the repo
+For any US-listed ticker (e.g. `AAPL`, `PANW`, `INTU`):
+
+| Output | What it is |
+|--------|------------|
+| **Interactive canvas** | A tabbed spreadsheet-style view in Cursor — Income · Balance Sheet · Cash Flow — with charts on key rows |
+| **Data files** | Saved under `json-data/` so you can re-open them without re-downloading from the SEC |
+
+Numbers come from **SEC EDGAR** (the company’s own filings), not from a third-party data vendor.
+
+---
+
+## One-time setup
+
+Do these steps once after cloning the repo.
+
+### Step 1 — Clone the repo
+
+Open **Terminal** (on Mac: Spotlight → type “Terminal” → Enter), then paste:
 
 ```bash
-git clone <your-remote> ~/src/stock-financials
+git clone https://github.com/mallik-mahalingam/stock-financials.git ~/src/stock-financials
 cd ~/src/stock-financials
 ```
 
-Or use an existing checkout at `~/src/stock-financials`.
+> **Already have the folder?** Just `cd ~/src/stock-financials` instead.
 
-### 2. Requirements
+### Step 2 — Check Python
 
-- **Python 3.10+** (stdlib only for the main XBRL pipeline — no `pip install` required)
-- Network access to [SEC EDGAR](https://www.sec.gov/edgar/search/)
-
-### 3. SEC User-Agent (required)
-
-EDGAR blocks generic clients. Set your name and email:
+This tool uses Python, which is already installed on most Macs. Check with:
 
 ```bash
-export SEC_USER_AGENT="YourName stock-financials research you@example.com"
+python3 --version
 ```
 
-Add to `~/.zshrc` or `~/.bashrc` to persist.
+You should see **3.10 or higher**. No extra packages to install.
 
-### 4. Cursor skill (optional)
+### Step 3 — Tell the SEC who you are (required)
+
+The SEC requires every automated request to include a **name and email**. Replace the example below with yours:
+
+```bash
+export SEC_USER_AGENT="Jane Doe stock-financials research jane@example.com"
+```
+
+To avoid typing this every time, add the same line to your shell profile:
+
+```bash
+echo 'export SEC_USER_AGENT="Jane Doe stock-financials research jane@example.com"' >> ~/.zshrc
+source ~/.zshrc
+```
+
+### Step 4 — Optional: enable Cursor AI help
+
+If you use **Cursor**, link the built-in skill so the AI knows how to run this for you:
 
 ```bash
 ln -sf ~/src/stock-financials/skills ~/.cursor/skills/stock-financials
 ```
 
-Skill file: `skills/SKILL.md`. Triggers: `/stock-financials`, `SEC-Income`, `SEC-BalanceSheet`, `SEC-CashFlow`.
-
-### 5. Generated output directories
-
-`json-data/` and `canvas/` are gitignored (see `.gitignore`). They are created on first `sync`:
-
-```
-json-data/{TICKER}-income.json
-json-data/{TICKER}-balance-sheet.json
-json-data/{TICKER}-cash-flow.json
-canvas/{ticker}-financials.canvas.tsx
-```
+After this, you can type in chat: *“Get financials for PANW”* or `/stock-financials AAPL`.
 
 ---
 
-## Quick start
+## How to use it (main workflow)
 
-Build all three statements and render the tabbed canvas for Palo Alto Networks:
+Replace `TICKER` with a stock symbol (always uppercase in commands).
+
+### Get all three statements + canvas
 
 ```bash
-export SEC_USER_AGENT="YourName stock-financials research you@example.com"
+python3 ~/src/stock-financials/scripts/sec_financials.py sync TICKER
+```
 
+**Examples:**
+
+```bash
 python3 ~/src/stock-financials/scripts/sec_financials.py sync PANW
+python3 ~/src/stock-financials/scripts/sec_financials.py sync AAPL
+python3 ~/src/stock-financials/scripts/sec_financials.py sync INTU
 ```
 
-Output (abbreviated):
+The first run for a ticker takes **30–90 seconds** (downloads from the SEC). Later runs are fast unless a new quarterly filing appeared.
 
-```json
-{
-  "ticker": "PANW",
-  "canvasPath": "/Users/you/src/stock-financials/canvas/panw-financials.canvas.tsx",
-  "available": ["income", "balance-sheet", "cash-flow"],
-  "missingJson": [],
-  "checks": { "...": "JSON is current" }
-}
+When it finishes, you’ll see a path like:
+
+```
+canvas/panw-financials.canvas.tsx
 ```
 
-Open in Cursor — copy the canvas into your workspace if Glass should show it beside chat:
+### Open the canvas in Cursor
+
+1. In Cursor’s **file explorer**, go to `~/src/stock-financials/canvas/`
+2. Open `{ticker}-financials.canvas.tsx` (ticker is lowercase, e.g. `panw-financials.canvas.tsx`)
+3. Cursor shows the interactive table beside your chat
+
+**Tip — show canvas next to chat automatically:** copy the file into your project’s canvases folder:
 
 ```bash
 cp ~/src/stock-financials/canvas/panw-financials.canvas.tsx \
-   ~/.cursor/projects/<workspace>/canvases/
+   ~/.cursor/projects/<your-project>/canvases/
+```
+
+Replace `<your-project>` with your Cursor workspace folder name under `~/.cursor/projects/`.
+
+---
+
+## Easiest path: ask Cursor
+
+If you completed **Step 4** above, skip the terminal and just ask in Cursor chat:
+
+> “Sync financials for Microsoft”  
+> “Show me AAPL income, balance sheet, and cash flow for the last 12 quarters”  
+> `/stock-financials DDOG`
+
+The agent runs `sync`, opens the canvas, and links it in chat.
+
+---
+
+## When a new quarter is filed
+
+Run the same command again:
+
+```bash
+python3 ~/src/stock-financials/scripts/sec_financials.py sync TICKER
+```
+
+The tool checks whether SEC has a newer 10-Q than your saved data. If yes, it rebuilds automatically.
+
+To **check without rebuilding** (see if you’re up to date):
+
+```bash
+python3 ~/src/stock-financials/scripts/sec_financials.py check TICKER
 ```
 
 ---
 
-## Examples
+## Shorter commands (optional)
 
-Set a shell alias to shorten commands:
+Paste once per Terminal session (or add to `~/.zshrc`):
 
 ```bash
 alias sf='python3 ~/src/stock-financials/scripts/sec_financials.py'
-export SEC_USER_AGENT="YourName stock-financials research you@example.com"
 ```
 
-### Sync (primary — do this first)
-
-Checks EDGAR staleness, rebuilds income if needed, auto-builds missing BS/CF from XBRL, renders tabbed canvas.
+Then use:
 
 ```bash
-sf sync INTU
-sf sync AAPL
-sf sync DDOG
-```
-
-Custom canvas output directory:
-
-```bash
-sf sync PANW --canvas-dir ~/.cursor/projects/Users-you-src-analysis/canvases
-```
-
-### Check without rebuilding
-
-See whether JSON is current vs latest 10-Q on EDGAR:
-
-```bash
-sf check PANW              # all three statements
-sf check PANW income       # income only
-```
-
-### Build individual statements
-
-Force rebuild from SEC XBRL company facts:
-
-```bash
-sf build PANW                    # all three
-sf build PANW income
-sf build PANW balance-sheet
-sf build PANW cash-flow
-```
-
-### Validate JSON
-
-```bash
-sf validate ~/src/stock-financials/json-data/PANW-income.json
-sf validate ~/src/stock-financials/json-data/PANW-balance-sheet.json
-sf validate ~/src/stock-financials/json-data/PANW-cash-flow.json
-```
-
-Prints `OK` or lists anchor-row / row-order errors.
-
-### Re-render canvas (JSON unchanged)
-
-```bash
-sf render PANW
-sf render PANW --canvas-dir ./canvas
-```
-
-### Align row order after manual JSON edits
-
-```bash
-sf align PANW
-sf align PANW income
-```
-
-### Paths and EDGAR links
-
-```bash
-sf path PANW                 # all JSON paths
-sf path PANW income
-
-sf edgar PANW                 # recent 10-Q / 10-K filing URLs
-sf edgar PANW --limit 12
-```
-
-### Legacy single-tab income canvas
-
-```bash
-sf sync MSFT income
-sf render MSFT income --canvas-dir ./canvas
-```
-
----
-
-## Environment variables
-
-| Variable | Default | Purpose |
-|----------|---------|---------|
-| `SEC_USER_AGENT` | *(required)* | EDGAR API identity string |
-| `STOCK_FINANCIALS_DIR` | `{repo}/json-data` | JSON output root |
-| `STOCK_FINANCIALS_CANVAS_DIR` | `{repo}/canvas` | Canvas output root |
-
-Example — store JSON outside the repo:
-
-```bash
-export STOCK_FINANCIALS_DIR=~/stock-financials-cache
-export STOCK_FINANCIALS_CANVAS_DIR=~/.cursor/projects/my-workspace/canvases
 sf sync PANW
+sf check AAPL
 ```
 
 ---
 
-## Directory layout
+## Reading the tables
+
+| Symbol / style | Meaning |
+|----------------|---------|
+| `$2,257` | Dollars in **millions** |
+| `(183)` | Negative number |
+| `0.76` | Earnings per share (2 decimal places) |
+| `47.0%` | Margin or year-over-year change |
+| `*` on a value | Calculated by this tool when the filing doesn’t report that line directly |
+
+**Section headers** (e.g. “Operating Activities”, “Assets”) are labels only — the numbers are in the rows below them.
+
+---
+
+## Where files are saved
+
+After `sync TICKER`, look here:
 
 ```
 ~/src/stock-financials/
-  README.md
-  .gitignore                      # ignores json-data/* and canvas/*
-  scripts/
-    sec_financials.py             # CLI entry point
-    income_xbrl.py                # income from XBRL
-    bs_xbrl.py                      # balance sheet (instant tags)
-    cf_xbrl.py                      # cash flow (YTD → quarterly)
-    statement_templates.py          # canonical row order
-    statement_align.py
-    number_format.py                # display formatting rules
-    render_financials_canvas.py     # tabbed canvas renderer
-    render_unified_canvas.py        # legacy single-statement render
-  schema/
-    income-v1.schema.json
-    balance-sheet-v1.schema.json
-    cash-flow-v1.schema.json
-  templates/
-    financials_canvas.template.tsx
-    income_canvas.template.tsx
-  json-data/                      # gitignored — generated JSON
-  canvas/                         # gitignored — generated canvases
-  skills/
-    SKILL.md                        # Cursor agent skill
+  json-data/
+    PANW-income.json
+    PANW-balance-sheet.json
+    PANW-cash-flow.json
+  canvas/
+    panw-financials.canvas.tsx    ← open this in Cursor
+```
+
+These folders are created automatically. They are **not** checked into git — they live on your machine.
+
+---
+
+## Troubleshooting
+
+| Problem | What to do |
+|---------|------------|
+| `SEC_USER_AGENT` / blocked by SEC | Set Step 3 again in this Terminal window, or add it to `~/.zshrc` |
+| `python3: command not found` | Install Python 3 from [python.org](https://www.python.org/downloads/) or `brew install python` |
+| Ticker not found | Use the US exchange symbol (e.g. `BRK.B` not `BRK-B`). Some foreign-only listings may not work. |
+| Canvas looks old | Run `sync TICKER` again — don’t edit the `.tsx` file by hand |
+| Slow first run | Normal — SEC download + parsing. Retry if your network dropped |
+
+**View recent SEC filings for a ticker** (opens URLs you can click in the terminal output):
+
+```bash
+sf edgar PANW
 ```
 
 ---
 
-## Display formatting
+## Other commands (reference)
 
-Display rules in `scripts/number_format.py`:
+Most people only need `sync`. These are here if you need more control:
 
-| Type | Format |
-|------|--------|
-| USD millions | Integer + commas: `2,257`, `(183)` |
-| EPS | Always 2 decimals: `0.76` |
-| Shares (millions) | 1 decimal when fractional: `351.4`; else integer: `813` |
-| Margins / YoY % | 1 decimal: `47.0%`, `+10.4%` |
+| What you want | Command |
+|---------------|---------|
+| Everything (usual choice) | `sf sync TICKER` |
+| Check if data is stale | `sf check TICKER` |
+| Force re-download from SEC | `sf build TICKER` |
+| Rebuild one statement only | `sf build TICKER income` (or `balance-sheet`, `cash-flow`) |
+| Refresh canvas only | `sf render TICKER` |
+| See saved file paths | `sf path TICKER` |
 
-Derived values marked with `*` in JSON display strings.
+Advanced environment variables (optional):
 
----
-
-## Validation
-
-`validate` checks schema, 12-quarter column alignment, anchor-row coverage, and row order vs `statement_templates.py`.
-
-| Statement | Anchor rows (must be populated in all 12 columns) |
-|-----------|---------------------------------------------------|
-| income | Total Revenues, Consolidated Net Income |
-| balance-sheet | Total Assets, Total Liabilities, Total Shareholders' Equity |
-| cash-flow | Cash from Operating Activities, Net Change in Cash |
-
-`sync` reports `missingColumns` when anchors have gaps. Section divider rows (`Assets`, `Operating Activities`, …) are intentionally blank.
+| Variable | Purpose |
+|----------|---------|
+| `SEC_USER_AGENT` | **Required** — your name + email for SEC |
+| `STOCK_FINANCIALS_DIR` | Custom folder for JSON data |
+| `STOCK_FINANCIALS_CANVAS_DIR` | Custom folder for canvas output |
 
 ---
 
-## Workflows
+## What to know about the data
 
-| Goal | Command |
-|------|---------|
-| Fresh ticker, all statements | `sf sync TICKER` |
-| EDGAR filed new 10-Q | `sf sync TICKER` (rebuilds if stale) |
-| Fix one statement only | `sf build TICKER balance-sheet` then `sf sync TICKER` |
-| Manual JSON edit | edit `json-data/` → `sf align TICKER` → `sf validate …` → `sf sync TICKER` |
-| Canvas only refresh | `sf render TICKER` |
+- **Source:** SEC EDGAR XBRL tags from 10-Q / 10-K filings.
+- **Q4 columns:** Sometimes computed as full-year minus first nine months when the filer doesn’t publish a standalone Q4 tag.
+- **Cash flow detail:** Operating / Investing / Financing **totals** tie to the filing; individual working-capital lines can differ slightly from vendor sites.
+- **Free cash flow extras** (NOPAT, Levered FCF, etc.): Derived memo lines using a simplified 21% tax assumption — useful for comparison, not official GAAP subtotals.
+- **Blank rows:** Omitted when empty across all 12 quarters.
 
----
-
-## Known limitations (SEC XBRL)
-
-**Source of truth is SEC EDGAR.** Row order follows the canonical templates in `statement_templates.py`; values come from XBRL tags and derivations.
-
-| Area | Notes |
-|------|-------|
-| Income Q4 | FY 10-K − 9M YTD when no standalone quarterly tag |
-| COGS* | Derived when `CostOfRevenue` missing (e.g. INTU) |
-| Cash flow WC lines | Section totals tie; individual WC lines may differ |
-| FCF memo lines | NOPAT / Levered / Unlevered use 21% tax — illustrative only |
-| Optional rows | Omitted when blank in all 12 quarters |
-
-See `skills/SKILL.md` for validation packs and agent workflow details.
+For agent validation rules and row definitions, see `skills/SKILL.md`.
 
 ---
 
-## Rules
+## Project layout (for reference)
 
-- Never add ticker-specific build scripts — use `build TICKER [statement]`.
-- Edit JSON, not `.tsx`; re-run `sync TICKER` to refresh the canvas.
-- Row labels/order: `scripts/statement_templates.py`; run `align TICKER` after manual edits.
+```
+~/src/stock-financials/
+  scripts/sec_financials.py   ← main command you run
+  json-data/                  ← generated data (your machine)
+  canvas/                     ← generated views (your machine)
+  skills/SKILL.md             ← Cursor agent instructions
+  schema/                     ← data format definitions
+  templates/                  ← canvas layout templates
+```
+
+**Do not** hand-edit `.tsx` canvas files. Always run `sync TICKER` to refresh after data changes.
