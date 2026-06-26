@@ -78,6 +78,60 @@ The assistant runs the sync, builds the table, and points you to the canvas file
 
 ---
 
+## What the canvas looks like
+
+After sync, you get **one file** with **three tabs** — **Income · Balance Sheet · Cash Flow**. In Cursor it opens as an interactive table: line items down the left, **12 quarters** across the top, summary stats and charts above the table.
+
+Below is a **short preview** (4 most recent quarters) using real **PANW** data from SEC filings. Your canvas includes all 12 quarters and many more rows.
+
+### Income tab
+
+Palo Alto Networks · USD millions · fiscal Q3 ends April
+
+| | Apr '26 | Jan '26 | Oct '25 | Jul '25 |
+|--|---------|---------|---------|---------|
+| **Total Revenues** | 3,002 | 2,594 | 2,474 | 2,536 |
+| Total Revenues %Chg | +31.1% | +14.9% | +15.7% | +15.8% |
+| **Gross Profit** | 2,028 | 1,909 | 1,836 | 1,856 |
+| Gross Profit Margin | 67.6% | 73.6% | 74.2% | 73.2% |
+| **Operating Profit** | (183) | 397 | 309 | 497 |
+| **Consolidated Net Income** | (177) | 432 | 334 | 254 |
+| Basic EPS | (0.22) | 0.61* | 0.49* | 0.38 |
+| Diluted EPS | (0.22) | 0.61* | 0.47 | 0.36 |
+
+### Balance sheet tab
+
+Snapshot at quarter-end · USD millions
+
+| | Apr '26 | Jan '26 | Oct '25 | Jul '25 |
+|--|---------|---------|---------|---------|
+| Cash and Cash Equivalents | 2,364 | 4,158 | 3,066 | 2,269 |
+| **Total Assets** | 46,266 | 24,979 | 23,536 | 23,576 |
+| **Total Liabilities** | 18,598 | 15,586 | 14,871 | 15,752 |
+| **Total Shareholders' Equity** | 27,668 | 9,393 | 8,665 | 7,824 |
+| Long-Term Debt | 1,192 | — | — | — |
+
+### Cash flow tab
+
+Quarterly cash flows · USD millions (outflows in parentheses)
+
+| | Apr '26 | Jan '26 | Oct '25 | Jul '25 |
+|--|---------|---------|---------|---------|
+| **Cash from Operating Activities** | 871 | 554 | 1,771 | 1,021 |
+| Capital Expenditure | (83) | (170) | (84) | (86) |
+| **Free Cash Flow*** | 788* | 384* | 1,687* | 935* |
+| Cash from Investing Activities | (1,766) | 651 | (983) | (763) |
+| Cash from Financing Activities | (899) | (114) | 8 | (374) |
+| **Net Change in Cash** | (1,792) | 1,091 | 796 | (116) |
+
+<small>
+
+*Derived row (not a direct GAAP subtotal in the filing). Section headers like **Operating Activities** and **Investing Activities** appear as dividers in the full canvas. Click a row to chart it across all 12 quarters.
+
+</small>
+
+---
+
 ## Ongoing habits
 
 | Situation | What to do |
