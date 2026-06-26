@@ -58,10 +58,13 @@ tr.section td { font-weight: 600; background: #f0f3f8; color: #333; }
 tr.italic td { font-style: italic; color: #5c6370; }
 .chart-box {
   margin-top: 24px; background: #fff; border: 1px solid #e5e8ef; border-radius: 10px; padding: 16px;
+  page-break-inside: avoid;
 }
 .chart-title { font-size: 16px; font-weight: 600; margin-bottom: 12px; }
-.legend { font-size: 12px; color: #5c6370; margin-bottom: 8px; }
-svg { width: 100%; height: auto; display: block; }
+.legend { font-size: 12px; color: #5c6370; margin-bottom: 12px; }
+.chart-stats { margin-top: 16px; font-size: 12px; }
+.chart-stats table { min-width: 720px; }
+svg { width: 100%; height: auto; display: block; min-height: 320px; }
 """
 
 
@@ -109,29 +112,44 @@ def render_row(row: dict, quarters: list[str]) -> str:
     return f'<tr class="{cls}"><td>{html.escape(row["label"])}</td>{cells}</tr>'
 
 
+def parse_value(raw: str) -> float | None:
+    s = raw.strip()
+    neg = s.startswith("(") and s.endswith(")")
+    s = s.strip("()").replace(",", "").replace("%", "").replace("*", "").replace("+", "")
+    if not s or s == "—":
+        return None
+    try:
+        return -float(s) if neg else float(s)
+    except ValueError:
+        return None
+
+
+def chart_rows(data: dict, labels: list[str]) -> list[tuple[str, list[str]]]:
+    seen: set[str] = set()
+    picked: list[tuple[str, list[str]]] = []
+    for row in data["rows"]:
+        lab = row["label"]
+        if lab in labels and lab not in seen and row.get("plottable") is not False:
+            seen.add(lab)
+            picked.append((lab, row["values"]))
+    for lab in labels:
+        if lab not in seen:
+            for row in data["rows"]:
+                if row["label"] == lab and row.get("plottable") is not False:
+                    picked.append((lab, row["values"]))
+                    break
+    return picked
+
+
 def simple_chart_svg(data: dict, labels: list[str]) -> str:
-    by = {r["label"]: r["values"] for r in data["rows"]}
     quarters = quarter_labels(data)
     series = []
     colors = ["#2563eb", "#ea580c", "#7c3aed", "#16a34a"]
-    for i, lab in enumerate(labels):
-        if lab not in by:
-            continue
-        parsed = []
-        for raw in reversed(by[lab]):
-            s = raw.strip()
-            neg = s.startswith("(") and s.endswith(")")
-            s = s.strip("()").replace(",", "").replace("%", "").replace("*", "").replace("+", "")
-            if not s or s == "—":
-                parsed.append(None)
-            else:
-                try:
-                    parsed.append(-float(s) if neg else float(s))
-                except ValueError:
-                    parsed.append(None)
+    for i, (lab, vals) in enumerate(chart_rows(data, labels)):
+        parsed = [parse_value(v) for v in reversed(vals)]
         series.append((lab, parsed, colors[i % len(colors)]))
 
-    w, h = 1180, 280
+    w, h = 1180, 420
     m = dict(l=72, r=28, t=24, b=40)
     iw, ih = w - m["l"] - m["r"], h - m["t"] - m["b"]
     allv = [v for _, pts, _ in series for v in pts if v is not None]
@@ -168,9 +186,26 @@ def simple_chart_svg(data: dict, labels: list[str]) -> str:
         if coords:
             paths.append(f'<polyline fill="none" stroke="{col}" stroke-width="2" points="{" ".join(coords)}"/>')
         legend.append(f'<span style="color:{col};font-weight:600">{html.escape(lab)}</span>')
+
+    stats_rows = ""
+    for (lab, vals), (_, pts, col) in zip(chart_rows(data, labels), series, strict=False):
+        nums = [v for v in pts if v is not None]
+        latest = html.escape(vals[0] if vals else "—")
+        if len(nums) >= 2 and nums[0] != 0:
+            chg_s = f"{((nums[-1] - nums[0]) / abs(nums[0])) * 100:+.1f}%"
+        else:
+            chg_s = "—"
+        stats_rows += (
+            f"<tr><td><span style='color:{col}'>●</span> {html.escape(lab)}</td>"
+            f"<td class='num'>{latest}</td><td class='num'>{chg_s}</td></tr>"
+        )
+
     return f"""<div class="chart-box"><div class="chart-title">Chart</div>
 <div class="legend">{' · '.join(legend)}</div>
-<svg viewBox="0 0 {w} {h}">{''.join(lines)}{cats}{''.join(paths)}</svg></div>"""
+<svg viewBox="0 0 {w} {h}">{''.join(lines)}{cats}{''.join(paths)}</svg>
+<div class="chart-stats"><div class="wrap"><table>
+<thead><tr><th>Selected metric</th><th>Latest</th><th>Total Change</th></tr></thead>
+<tbody>{stats_rows}</tbody></table></div></div></div>"""
 
 
 def page_html(active: str, tab_label: str, data: dict, section_title: str) -> str:
@@ -238,9 +273,12 @@ def main() -> int:
             rel = path.relative_to(REPO).as_posix()
             url = f"http://127.0.0.1:{port}/{rel}"
             subprocess.run(["playwright-cli", "open", url], check=True)
-            subprocess.run(["playwright-cli", "resize", "1440", "1200"], check=True)
-            time.sleep(0.5)
-            subprocess.run(["playwright-cli", "screenshot", f"--filename={png}"], check=True)
+            subprocess.run(["playwright-cli", "resize", "1440", "900"], check=True)
+            time.sleep(0.75)
+            subprocess.run(
+                ["playwright-cli", "screenshot", f"--filename={png}", "--full-page"],
+                check=True,
+            )
             subprocess.run(["playwright-cli", "close"], check=True)
             print(f"Wrote {png}")
     finally:

@@ -82,7 +82,7 @@ The assistant runs the sync, builds the table, and points you to the canvas file
 
 After sync, you get **one file** with **three tabs** — **Income · Balance Sheet · Cash Flow**. Open it in **Cursor** for the interactive view: summary stats at the top, **12 quarters** in the table, and charts you can customize by ticking rows.
 
-Real example — **PANW** (Palo Alto Networks), from SEC filings:
+Real example — **PANW** (Palo Alto Networks), from SEC filings. Each screenshot is the **full page** (table + chart at the bottom):
 
 ### Income tab
 
