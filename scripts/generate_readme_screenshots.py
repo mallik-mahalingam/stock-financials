@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Generate full-fidelity README screenshot(s) from SEC JSON.
 
-Currently: PANW income statement only (all rows × 12 quarters + chart).
+Currently: MSFT income statement (all rows × 12 quarters + chart).
 """
 
 from __future__ import annotations
@@ -18,6 +18,7 @@ from threading import Thread
 
 REPO = Path(__file__).resolve().parent.parent
 JSON_DIR = REPO / "json-data"
+README_TICKER = "MSFT"
 OUT_DIR = REPO / "docs" / "screenshots"
 PREVIEW_DIR = REPO / "docs" / "preview"
 
@@ -202,8 +203,9 @@ def income_page(data: dict) -> str:
         for s in summary.get("stats", [])[:4]
     )
     chart_labels = list(summary.get("defaultChartRows") or ["Total Revenues", "Operating Margin"])[:2]
+    ticker = data.get("ticker") or README_TICKER
     return f"""<!DOCTYPE html><html><head><meta charset="utf-8"><style>{CSS}</style></head><body>
-<h1>PANW — Financial Statements</h1>
+<h1>{html.escape(ticker)} — Financial Statements</h1>
 <div class="sub">{html.escape(summary.get("subtitle", ""))}</div>
 <div class="fiscal">{html.escape(summary.get("fiscalMapping", ""))}</div>
 <div class="tabs">
@@ -235,10 +237,11 @@ def main() -> int:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     PREVIEW_DIR.mkdir(parents=True, exist_ok=True)
 
-    data = load(JSON_DIR / "PANW-income.json")
-    html_path = PREVIEW_DIR / "panw-income-full.html"
+    ticker = README_TICKER.lower()
+    data = load(JSON_DIR / f"{README_TICKER}-income.json")
+    html_path = PREVIEW_DIR / f"{ticker}-income-full.html"
     html_path.write_text(income_page(data))
-    png = OUT_DIR / "panw-income.png"
+    png = OUT_DIR / f"{ticker}-income.png"
 
     srv = serve()
     try:

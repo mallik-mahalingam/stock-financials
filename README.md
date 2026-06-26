@@ -61,7 +61,7 @@ Use this **whenever** you want financials for a stock. No setup steps — just a
 In **Cursor**, **Claude Code**, or any AI tool with this skill installed, type something like:
 
 > Get financials for Apple  
-> Show me PANW income, balance sheet, and cash flow  
+> Show me MSFT income, balance sheet, and cash flow  
 > `/stock-financials MSFT`
 
 The assistant runs the sync, builds the table, and points you to the canvas file. Works after Part 1 is done once.
@@ -80,9 +80,9 @@ The assistant runs the sync, builds the table, and points you to the canvas file
 
 ## What the canvas looks like
 
-One tabbed file in **Cursor** — **Income · Balance Sheet · Cash Flow**. Below is a full **PANW income statement** preview: all line items, **12 quarters**, summary stats, and chart (same layout as the live canvas).
+One tabbed file in **Cursor** — **Income · Balance Sheet · Cash Flow**. Below is a full **MSFT income statement** preview: all line items, **12 quarters**, summary stats, and chart (same layout as the live canvas).
 
-![PANW income statement — 12 quarters, full table, chart](docs/screenshots/panw-income.png)
+![MSFT income statement — 12 quarters, full table, chart](docs/screenshots/msft-income.png)
 
 <small>
 
