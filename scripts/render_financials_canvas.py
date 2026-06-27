@@ -131,7 +131,7 @@ def render_financials_canvas(ticker: str, out_path: Path, statements: dict[str, 
     )
 
     tab_data_lines = ",\n".join(
-        f'  "{key}": {key.upper().replace("-", "_")}_DATA'
+        f'  "{key}": {key.upper().replace("-", "_")}_DATA as StatementData'
         for key in available
     )
     tab_data_block = f"const TAB_DATA: Record<string, StatementData> = {{\n{tab_data_lines},\n}};"
@@ -143,7 +143,7 @@ def render_financials_canvas(ticker: str, out_path: Path, statements: dict[str, 
     )
 
     panels = "\n".join(
-        f'      {{tab === "{key}" && <StatementPanel tabKey="{key}" data={{{key.upper().replace("-", "_")}_DATA}} title="{label}" />}}'
+        f'      {{tab === "{key}" && <StatementPanel tabKey="{key}" data={{{key.upper().replace("-", "_")}_DATA as StatementData}} title="{label}" />}}'
         for key, label in TAB_ORDER
         if key in available
     )

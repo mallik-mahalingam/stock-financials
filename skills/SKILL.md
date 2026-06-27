@@ -161,7 +161,12 @@ All three statements use the canvas skill conventions:
 1. **12 quarter columns**, most recent first in the table; chart time axis **oldest → newest** (reverse column order).
 2. **One unified `Table` per statement** — section titles (Assets, Operating Activities, etc.) are **bold divider rows inside the table**, not separate tables (separate tables misalign columns).
 3. Shared header: `["Line item", ...QUARTERS]`, `tableLayout: "fixed"`, label column **360px**, `framed` + `striped`.
-4. **Stock snapshot table** at canvas top — Yahoo Finance price, 52-week range, market cap, trailing P/E (embedded at render time).
+4. **Key metrics row** (below tab pills, above statement body) — two equal-width framed tables side by side:
+   - **Left:** `{Income|Balance Sheet|Cash Flow} highlights` — 2-column table (`Metric | Value`) from JSON `summary.stats`; colored values; updates with active tab.
+   - **Right:** **Stock snapshot** (Yahoo Finance via `yfinance`, embedded at render) — **3-column table** `Metric | (middle) | Value`:
+     - **Price row:** `Price` · middle: `+15.7% from 52W low (+$23.31) · -44.8% from 52W high (-$139.14)` (green/red) · Value: **$372.97** (accent, right-aligned).
+     - Other rows: 52-week low/high, market cap, P/E — empty middle cell; value right-aligned.
+   - **`sync TICKER` always re-renders** the canvas from `templates/financials_canvas.template.tsx` (never hand-edit `canvas/*.canvas.tsx`). After template or renderer changes, re-run `sync TICKER` and **copy** to workspace `canvases/` (see below). `STOCK_SNAPSHOT = null` → install `yfinance` and sync again.
 5. **Interactive chart** below: custom inline-SVG **`CombinedChart`** (not SDK `BarChart`/`LineChart`):
    - One converged plot, dual axes ($ left, % or second unit right)
    - Line / Bar `Select`, value labels with **full numbers (no `k`)**
@@ -194,7 +199,7 @@ Replace `TICKER` with the lowercase ticker (e.g. `msft`).
 
 If `WORKSPACE_PATH` is unavailable, derive slug from the workspace path in user_info the same way (strip leading `/`, replace `/` with `-`).
 
-2. **Show the Yahoo Finance snapshot table** (see **Stock snapshot** below) — then **Canvas** links:
+2. **Show the Yahoo Finance snapshot table in chat** (see **Stock snapshot** below) — then **Canvas** links (canvas shows the same data in paired Key metrics tables):
 
 | Canvas | Link |
 |--------|------|
@@ -212,29 +217,21 @@ Use the full absolute path. Tabs appear only for JSON that exists.
 
 ## Stock snapshot (mandatory)
 
-After `sync TICKER`, the **canvas** shows a **Stock snapshot** table at the top (Yahoo Finance via `yfinance`): current price, 52-week range, market cap, trailing P/E. Re-render with `sync TICKER` if missing (`STOCK_SNAPSHOT = null` means fetch failed — install `yfinance`).
+After `sync TICKER`:
 
-Also paste the same table in chat (from `markdownTable` in sync JSON) before canvas links:
+**Canvas** — the paired **Key metrics row** (see Shared canvas rules §4) always includes **Stock snapshot** on the right when Yahoo data loads. The price row uses **three columns** (label · 52W deltas in the middle · price in Value). Highlights on the left update with the active tab. **`sync TICKER` regenerates the canvas** — then copy to workspace `canvases/` and link `{ticker}-financials.canvas.tsx` beside chat (Cursor only opens canvases from that folder).
+
+**Chat** — paste `markdownTable` from sync JSON (or `snapshot TICKER --markdown`) before canvas links:
 
 ```bash
 python3 ~/src/stock-financials/scripts/sec_financials.py snapshot TICKER --markdown
 ```
 
-Paste the markdown table into chat. If `snapshotError` appears, run `pip install yfinance` and retry.
+If `snapshotError` appears, run `pip install yfinance` and retry.
 
 | Metric | Value |
 |--------|-------|
-| Current price | (from Yahoo) |
-| 52-week low | |
-| 52-week high | |
-| Market cap | |
-| P/E (trailing) | |
-
-Example (MSFT):
-
-| Metric | Value |
-|--------|-------|
-| Current price | $372.97 |
+| Current price | +15.7% from 52W low (+$23.31) · -44.8% from 52W high (-$139.14) · **$372.97** |
 | 52-week low | $349.20 |
 | 52-week high | $555.45 |
 | Market cap | $2.77T |
@@ -242,7 +239,7 @@ Example (MSFT):
 
 Include the table header line with company name, ticker, source, and as-of timestamp from `markdownTable`.
 
-**Never** finish a stock-financials run without this snapshot table when Yahoo data is available.
+**Never** finish a stock-financials run without this snapshot when Yahoo data is available, and **always** link the canvas so the user sees the same metrics rendered in the paired tables.
 
 ---
 
@@ -385,7 +382,8 @@ Spot-check: Operating, Investing, Financing, Net Change in Cash, CapEx. Standalo
 - [ ] validate each JSON (anchor rows filled, 12 quarters; income `grossProfitMatchesXbrlTag` must be true)
 - [ ] if missingJson: build balance-sheet and/or cash-flow JSON → validate → sync TICKER again
 - [ ] if missingColumns in sync output: fix gaps → validate → sync again
-- [ ] link canvas/{ticker}-financials.canvas.tsx in chat
+- [ ] sync TICKER (re-renders canvas from template + embeds Yahoo snapshot)
+- [ ] copy `canvas/{ticker}-financials.canvas.tsx` → workspace `canvases/` and link in chat (Key metrics row + 3-col stock snapshot visible)
 - [ ] append validation pack (all three statements that have JSON)
 ```
 

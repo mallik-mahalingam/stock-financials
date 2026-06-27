@@ -2,6 +2,7 @@ __HEADER__
 import {
   Callout, Checkbox, Grid, H1, H2, H3, Pill, Row,
   Select, Stack, Table, Text, useCanvasState, useHostTheme,
+  type TableProps,
 } from "cursor/canvas";
 
 type Kind = "normal" | "italic" | "total";
@@ -49,31 +50,64 @@ const TAB_LABELS: Record<string, string> = {
 };
 
 type SummaryStat = { value: string; label: string; tone?: string };
-type MetricRow = { label: string; value: JSX.Element; rowTone?: "success" | "info" };
+type MetricCell = TableProps["rows"][number][number];
+type MetricRow = { label: MetricCell; value: MetricCell; rowTone?: "success" | "info" };
 type ValueTone = "default" | "accent" | "success" | "danger" | "info";
 
 function useMetricColors() {
   const theme = useHostTheme();
   return {
     accent: theme.accent.primary,
-    success: theme.palette.diffStripAdded,
-    danger: theme.palette.diffStripRemoved,
+    success: theme.diff.stripAdded,
+    danger: theme.diff.stripRemoved,
     info: theme.accent.primary,
     default: theme.text.primary,
   };
 }
 
-function MetricValue({ text, tone = "default" }: { text: string; tone?: ValueTone }) {
+function MetricValue({ text, tone = "default", size = "body" }: { text: string; tone?: ValueTone; size?: "body" | "small" }) {
   const colors = useMetricColors();
-  return <Text weight="semibold" style={{ color: colors[tone] }}>{text}</Text>;
+  return <Text weight="semibold" size={size} style={{ color: colors[tone] }}>{text}</Text>;
 }
 
-function MetricStack({ lines }: { lines: Array<{ text: string; tone?: ValueTone }> }) {
+function PriceRangeMiddle({ snap }: { snap: StockSnapshot }) {
   return (
-    <Stack gap={2} style={{ alignItems: "flex-end" }}>
-      {lines.map((line) => (
-        <MetricValue key={line.text} text={line.text} tone={line.tone} />
-      ))}
+    <Row gap={6} wrap align="center" justify="center">
+      <MetricValue
+        text={`${snap.fromLowPct} from 52W low (${snap.fromLowAbs})`}
+        tone="success"
+        size="small"
+      />
+      <Text tone="secondary" size="small">·</Text>
+      <MetricValue
+        text={`${snap.fromHighPct} from 52W high (${snap.fromHighAbs})`}
+        tone="danger"
+        size="small"
+      />
+    </Row>
+  );
+}
+
+function StockSnapshotTable({ snap }: { snap: StockSnapshot }) {
+  return (
+    <Stack gap={6} style={{ height: "100%", minWidth: 0 }}>
+      <Stack gap={2}>
+        <H2>Stock snapshot</H2>
+        <Text tone="secondary" size="small">{snap.source} · {snap.asOf}</Text>
+      </Stack>
+      <Table
+        headers={["Metric", "", "Value"]}
+        rows={[
+          ["Price", <PriceRangeMiddle snap={snap} />, <MetricValue text={snap.price} tone="accent" />],
+          ["52-week low", "", <MetricValue text={snap.fiftyTwoWeekLow} />],
+          ["52-week high", "", <MetricValue text={snap.fiftyTwoWeekHigh} />],
+          ["Market cap", "", <MetricValue text={snap.marketCap} tone="info" />],
+          ["P/E (trailing)", "", <MetricValue text={snap.trailingPE} />],
+        ]}
+        columnAlign={["left", "center", "right"]}
+        framed
+        style={{ width: "100%" }}
+      />
     </Stack>
   );
 }
@@ -120,26 +154,6 @@ function KeyMetricsRow({
   stats: SummaryStat[];
   highlightsTitle: string;
 }) {
-  const marketRows: MetricRow[] = snap
-    ? [
-        {
-          label: "Price",
-          value: (
-            <MetricStack
-              lines={[
-                { text: snap.price, tone: "accent" },
-                { text: `${snap.fromLowPct} from 52W low (${snap.fromLowAbs})`, tone: "success" },
-                { text: `${snap.fromHighPct} from 52W high (${snap.fromHighAbs})`, tone: "danger" },
-              ]}
-            />
-          ),
-        },
-        { label: "52-week low", value: <MetricValue text={snap.fiftyTwoWeekLow} /> },
-        { label: "52-week high", value: <MetricValue text={snap.fiftyTwoWeekHigh} /> },
-        { label: "Market cap", value: <MetricValue text={snap.marketCap} tone="info" /> },
-        { label: "P/E (trailing)", value: <MetricValue text={snap.trailingPE} /> },
-      ]
-    : [];
   const finRows: MetricRow[] = stats.map((s) => ({
     label: s.label,
     value: <MetricValue text={s.value} tone={statValueTone(s.tone)} />,
@@ -160,13 +174,7 @@ function KeyMetricsRow({
       {stats.length > 0 ? (
         <CompactMetricTable title={highlightsTitle} rows={finRows} />
       ) : null}
-      {snap ? (
-        <CompactMetricTable
-          title="Stock snapshot"
-          caption={`${snap.source} · ${snap.asOf}`}
-          rows={marketRows}
-        />
-      ) : null}
+      {snap ? <StockSnapshotTable snap={snap} /> : null}
     </Grid>
   );
 }
@@ -437,6 +445,29 @@ function ChartArea({
   );
 }
 
+function SectionTable({
+  sec,
+  quarters,
+  selected,
+  onToggle,
+}: {
+  sec: SectionBlock;
+  quarters: string[];
+  selected: string[];
+  onToggle: (label: string) => void;
+}) {
+  return (
+    <Stack gap={8}>
+      <H3>{sec.title}</H3>
+      <FinTable lead={sec.title} defs={sec.rows} quarters={quarters} selected={selected} onToggle={onToggle} />
+    </Stack>
+  );
+}
+
+function NoteLine({ text }: { text: string }) {
+  return <Text size="small">{text}</Text>;
+}
+
 function StatementPanel({ tabKey, data, title }: { tabKey: string; data: StatementData; title: string }) {
   const defaultChart = data.summary.defaultChartRows?.length
     ? data.summary.defaultChartRows
@@ -456,10 +487,12 @@ function StatementPanel({ tabKey, data, title }: { tabKey: string; data: Stateme
       <H2>{title}</H2>
       {data.sections ? (
         data.sections.map((sec) => (
-          <Stack key={sec.title} gap={8}>
-            <H3>{sec.title}</H3>
-            <FinTable lead={sec.title} defs={sec.rows} quarters={data.quarters} selected={selected} onToggle={toggle} />
-          </Stack>
+          <SectionTable
+            sec={sec}
+            quarters={data.quarters}
+            selected={selected}
+            onToggle={toggle}
+          />
         ))
       ) : (
         <FinTable lead="Income Statement" defs={data.rows} quarters={data.quarters} selected={selected} onToggle={toggle} />
@@ -469,7 +502,7 @@ function StatementPanel({ tabKey, data, title }: { tabKey: string; data: Stateme
         <Callout tone="neutral" title="Notes & methodology">
           <Stack gap={6}>
             {data.notes.map((n) => (
-              <Text key={n} size="small">{n}</Text>
+              <NoteLine text={n} />
             ))}
           </Stack>
         </Callout>
