@@ -60,6 +60,7 @@ sync TICKER ──► build income if stale ──► build BS/CF JSON if missin
 | Income XBRL builder | `~/src/stock-financials/scripts/income_xbrl.py` (generic — **never** add `build_{ticker}.py`) |
 | Balance sheet XBRL builder | `~/src/stock-financials/scripts/bs_xbrl.py` |
 | Cash flow XBRL builder | `~/src/stock-financials/scripts/cf_xbrl.py` |
+| Stock snapshot (Yahoo) | `~/src/stock-financials/scripts/stock_snapshot.py` |
 | Row templates / align | `scripts/statement_templates.py`, `scripts/statement_align.py` |
 | Canvas templates | `~/src/stock-financials/templates/` |
 | Generated canvases | `~/src/stock-financials/canvas/` |
@@ -92,7 +93,13 @@ python3 ~/src/stock-financials/scripts/sec_financials.py render TICKER
 
 # Recent EDGAR filings
 python3 ~/src/stock-financials/scripts/sec_financials.py edgar TICKER
+
+# Current stock snapshot (Yahoo Finance) — also included in sync JSON output
+python3 ~/src/stock-financials/scripts/sec_financials.py snapshot TICKER
+python3 ~/src/stock-financials/scripts/sec_financials.py snapshot TICKER --markdown
 ```
+
+Requires **`yfinance`** (`pip install yfinance`). One-time setup installs it if missing.
 
 Legacy single-statement canvas (optional): append `income` to `sync` or `render`.
 
@@ -186,7 +193,7 @@ Replace `TICKER` with the lowercase ticker (e.g. `msft`).
 
 If `WORKSPACE_PATH` is unavailable, derive slug from the workspace path in user_info the same way (strip leading `/`, replace `/` with `-`).
 
-2. **Lead the final response** with a **Canvas** link to the synced tabbed file:
+2. **Show the Yahoo Finance snapshot table** (see **Stock snapshot** below) — then **Canvas** links:
 
 | Canvas | Link |
 |--------|------|
@@ -199,6 +206,42 @@ Use the full absolute path. Tabs appear only for JSON that exists.
 4. If render failed or JSON is missing, say so — do not omit the canvases section silently; explain which files are unavailable.
 
 **Never** finish a stock-financials run with only JSON paths or "canvases are at …" without clickable links.
+
+---
+
+## Stock snapshot (mandatory)
+
+After `sync TICKER`, show a **current stock snapshot table** in chat **before** the canvas links. Data comes from **Yahoo Finance** via `yfinance`.
+
+`sync` JSON includes `snapshot` and `markdownTable`. If missing, run:
+
+```bash
+python3 ~/src/stock-financials/scripts/sec_financials.py snapshot TICKER --markdown
+```
+
+Paste the markdown table into chat. If `snapshotError` appears, run `pip install yfinance` and retry.
+
+| Metric | Value |
+|--------|-------|
+| Current price | (from Yahoo) |
+| 52-week low | |
+| 52-week high | |
+| Market cap | |
+| P/E (trailing) | |
+
+Example (MSFT):
+
+| Metric | Value |
+|--------|-------|
+| Current price | $372.97 |
+| 52-week low | $349.20 |
+| 52-week high | $555.45 |
+| Market cap | $2.77T |
+| P/E (trailing) | 22.2x |
+
+Include the table header line with company name, ticker, source, and as-of timestamp from `markdownTable`.
+
+**Never** finish a stock-financials run without this snapshot table when Yahoo data is available.
 
 ---
 
@@ -337,6 +380,7 @@ Spot-check: Operating, Investing, Financing, Net Change in Cash, CapEx. Standalo
 
 ```
 - [ ] sync TICKER
+- [ ] show Yahoo Finance snapshot table in chat (from sync JSON or snapshot --markdown)
 - [ ] validate each JSON (anchor rows filled, 12 quarters; income `grossProfitMatchesXbrlTag` must be true)
 - [ ] if missingJson: build balance-sheet and/or cash-flow JSON → validate → sync TICKER again
 - [ ] if missingColumns in sync output: fix gaps → validate → sync again

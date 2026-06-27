@@ -22,6 +22,17 @@ PY_VER="$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_
 echo "Python ${PY_VER} — OK"
 echo ""
 
+if ! python3 -c "import yfinance" >/dev/null 2>&1; then
+  echo "Installing yfinance (Yahoo Finance stock snapshots)..."
+  python3 -m pip install --user yfinance >/dev/null 2>&1 || python3 -m pip install yfinance >/dev/null 2>&1 || true
+  if python3 -c "import yfinance" >/dev/null 2>&1; then
+    echo "yfinance — OK"
+  else
+    echo "Could not install yfinance automatically. Run: pip install yfinance"
+  fi
+  echo ""
+fi
+
 if [[ -f "${ENV_FILE}" ]]; then
   echo "Setup was already done (${ENV_FILE})."
   read -r -p "Update your name/email? [y/N] " AGAIN

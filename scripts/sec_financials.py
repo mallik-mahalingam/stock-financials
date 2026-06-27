@@ -510,7 +510,7 @@ def sync_ticker(ticker: str, canvas_dir: Path) -> dict[str, Any]:
         for stmt, data in statements.items()
         if missing_data_columns(data)
     }
-    return {
+    result = {
         "ticker": t,
         "canvasPath": str(out),
         "available": list(statements.keys()),
@@ -519,6 +519,27 @@ def sync_ticker(ticker: str, canvas_dir: Path) -> dict[str, Any]:
         "checks": checks,
         "incomeRefreshed": checks["income"]["needsUpdate"],
     }
+    attach_snapshot(result, t)
+    return result
+
+
+def attach_snapshot(result: dict[str, Any], ticker: str) -> None:
+    try:
+        from stock_snapshot import snapshot_payload
+
+        result.update(snapshot_payload(ticker))
+    except Exception as e:
+        result["snapshotError"] = str(e)
+
+
+def cmd_snapshot(args: argparse.Namespace) -> None:
+    from stock_snapshot import snapshot_payload
+
+    payload = snapshot_payload(args.ticker)
+    if args.markdown:
+        print(payload["markdownTable"])
+    else:
+        print(json.dumps(payload, indent=2))
 
 
 def cmd_sync(args: argparse.Namespace) -> None:
@@ -533,7 +554,9 @@ def cmd_sync(args: argparse.Namespace) -> None:
         data = load_json(path)
         out = canvas_dir / f"{normalize_ticker(args.ticker).lower()}-income.canvas.tsx"
         render_income_canvas(data, out)
-        print(json.dumps({"jsonPath": str(path), "canvasPath": str(out), "wasStale": status["needsUpdate"]}, indent=2))
+        result = {"jsonPath": str(path), "canvasPath": str(out), "wasStale": status["needsUpdate"]}
+        attach_snapshot(result, args.ticker)
+        print(json.dumps(result, indent=2))
         return
 
     result = sync_ticker(args.ticker, canvas_dir)
@@ -598,6 +621,11 @@ def main() -> None:
     s.add_argument("statement", nargs="?", choices=["income"], default=None)
     s.add_argument("--canvas-dir", default=None, help=f"Default: {REPO_ROOT / 'canvas'}")
     s.set_defaults(func=cmd_sync)
+
+    snap = sub.add_parser("snapshot", help="Current stock snapshot from Yahoo Finance")
+    snap.add_argument("ticker")
+    snap.add_argument("--markdown", action="store_true", help="Print markdown table only")
+    snap.set_defaults(func=cmd_snapshot)
 
     args = p.parse_args()
     try:
