@@ -22,7 +22,40 @@ type StatementData = {
   notes: string[];
 };
 
+type StockSnapshot = {
+  source: string;
+  asOf: string;
+  price: string;
+  fiftyTwoWeekLow: string;
+  fiftyTwoWeekHigh: string;
+  marketCap: string;
+  trailingPE: string;
+};
+
+__STOCK_SNAPSHOT__
+
 __DATA_BLOCKS__
+
+function StockSnapshotTable({ snap }: { snap: StockSnapshot }) {
+  return (
+    <Stack gap={8}>
+      <H2>Stock snapshot</H2>
+      <Text tone="secondary" size="small">{snap.source} · {snap.asOf}</Text>
+      <Table
+        headers={["Metric", "Value"]}
+        rows={[
+          ["Current price", snap.price],
+          ["52-week low", snap.fiftyTwoWeekLow],
+          ["52-week high", snap.fiftyTwoWeekHigh],
+          ["Market cap", snap.marketCap],
+          ["P/E (trailing)", snap.trailingPE],
+        ]}
+        columnAlign={["left", "right"]}
+        framed
+      />
+    </Stack>
+  );
+}
 
 const UNIT_META: Record<Unit, { title: string }> = {
   "$": { title: "USD millions" },
@@ -348,6 +381,7 @@ export default function Financials() {
         <H1>__TICKER__ — Financial Statements</H1>
         <Text tone="secondary">__SUBTITLE__</Text>
       </Stack>
+      {STOCK_SNAPSHOT ? <StockSnapshotTable snap={STOCK_SNAPSHOT} /> : null}
       <Row gap={8}>
 __PILLS__
       </Row>

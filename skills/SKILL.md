@@ -161,12 +161,13 @@ All three statements use the canvas skill conventions:
 1. **12 quarter columns**, most recent first in the table; chart time axis **oldest → newest** (reverse column order).
 2. **One unified `Table` per statement** — section titles (Assets, Operating Activities, etc.) are **bold divider rows inside the table**, not separate tables (separate tables misalign columns).
 3. Shared header: `["Line item", ...QUARTERS]`, `tableLayout: "fixed"`, label column **360px**, `framed` + `striped`.
-4. **Interactive chart** below: custom inline-SVG **`CombinedChart`** (not SDK `BarChart`/`LineChart`):
+4. **Stock snapshot table** at canvas top — Yahoo Finance price, 52-week range, market cap, trailing P/E (embedded at render time).
+5. **Interactive chart** below: custom inline-SVG **`CombinedChart`** (not SDK `BarChart`/`LineChart`):
    - One converged plot, dual axes ($ left, % or second unit right)
    - Line / Bar `Select`, value labels with **full numbers (no `k`)**
    - Stats table: Latest, Total Change %, CAGR (`years = (points−1)/4`)
    - `useCanvasState` for selection + chart type
-5. **Checkbox** on each plottable row label for chart selection.
+6. **Checkbox** on each plottable row label for chart selection.
 
 Templates: `~/src/stock-financials/templates/financials_canvas.template.tsx` (combined tabbed canvas). Legacy single income: `income_canvas.template.tsx`.
 
@@ -211,9 +212,9 @@ Use the full absolute path. Tabs appear only for JSON that exists.
 
 ## Stock snapshot (mandatory)
 
-After `sync TICKER`, show a **current stock snapshot table** in chat **before** the canvas links. Data comes from **Yahoo Finance** via `yfinance`.
+After `sync TICKER`, the **canvas** shows a **Stock snapshot** table at the top (Yahoo Finance via `yfinance`): current price, 52-week range, market cap, trailing P/E. Re-render with `sync TICKER` if missing (`STOCK_SNAPSHOT = null` means fetch failed — install `yfinance`).
 
-`sync` JSON includes `snapshot` and `markdownTable`. If missing, run:
+Also paste the same table in chat (from `markdownTable` in sync JSON) before canvas links:
 
 ```bash
 python3 ~/src/stock-financials/scripts/sec_financials.py snapshot TICKER --markdown

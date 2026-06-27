@@ -94,6 +94,25 @@ def render_financials_canvas(ticker: str, out_path: Path, statements: dict[str, 
     available = [key for key, _ in TAB_ORDER if key in statements]
     embeds = {key: prepare_statement_embed(statements[key]) for key in available}
 
+    snapshot_block = "const STOCK_SNAPSHOT = null;"
+    try:
+        from stock_snapshot import fetch_snapshot
+
+        snap = fetch_snapshot(t)
+        d = snap["display"]
+        embed_snap = {
+            "source": snap["source"],
+            "asOf": snap["asOf"],
+            "price": d["price"],
+            "fiftyTwoWeekLow": d["fiftyTwoWeekLow"],
+            "fiftyTwoWeekHigh": d["fiftyTwoWeekHigh"],
+            "marketCap": d["marketCap"],
+            "trailingPE": d["trailingPE"],
+        }
+        snapshot_block = f"const STOCK_SNAPSHOT = {json.dumps(embed_snap, ensure_ascii=False)};"
+    except Exception:
+        pass
+
     src_lines = [f"//   {key}: {json_path(t, key)}" for key in available]
     generated = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     header = (
@@ -130,6 +149,7 @@ def render_financials_canvas(ticker: str, out_path: Path, statements: dict[str, 
     body = (
         template.replace("__HEADER__", header)
         .replace("__DATA_BLOCKS__", data_blocks)
+        .replace("__STOCK_SNAPSHOT__", snapshot_block)
         .replace("__TICKER__", t)
         .replace("__SUBTITLE__", subtitle)
         .replace("__PILLS__", pills)
