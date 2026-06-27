@@ -5,7 +5,7 @@ Rules (standardized financials tables):
 - EPS: always two decimal places
 - Shares (millions): one decimal when fractional, otherwise integer (351.4 vs 813)
 - Margins / effective tax rate: one decimal with trailing zero (47.0%)
-- YoY % change: signed, one decimal (+10.4%, 0.0%)
+- YoY / QoQ % change: signed, one decimal (+10.4%, 0.0%)
 """
 
 from __future__ import annotations

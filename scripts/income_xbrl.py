@@ -298,10 +298,14 @@ def is_fiscal_year_end(usgaap: dict, end: str) -> bool:
 
 def q4_flow(usgaap: dict, concepts: list[str], end: str, unit: str = "USD"):
     if end.endswith("-01-31"):
-        return q4_flow_jan(usgaap, concepts, end, unit)
-    if end.endswith("-07-31"):
-        return q4_flow_jul(usgaap, concepts, end, unit)
-    if end.endswith("-12-31"):
+        v = q4_flow_jan(usgaap, concepts, end, unit)
+        if v is not None:
+            return v
+    elif end.endswith("-07-31"):
+        v = q4_flow_jul(usgaap, concepts, end, unit)
+        if v is not None:
+            return v
+    elif end.endswith("-12-31"):
         v = q4_flow_dec(usgaap, concepts, end, unit)
         if v is not None:
             return v
@@ -548,6 +552,14 @@ def build_income_rows(usgaap: dict, period_ends: list[str]) -> tuple[list[dict[s
         else:
             yoy.append((r - rev[j]) / abs(rev[j]) * 100)
 
+    qoq = []
+    for i, r in enumerate(rev):
+        j = i + 1
+        if r is None or j >= n or rev[j] is None or rev[j] == 0:
+            qoq.append(None)
+        else:
+            qoq.append((r - rev[j]) / abs(rev[j]) * 100)
+
     gm = [(gross[i] / rev[i] * 100) if gross[i] is not None and rev[i] else None for i in range(n)]
     om = [(op[i] / rev[i] * 100) if op[i] is not None and rev[i] else None for i in range(n)]
     etr = [
@@ -604,7 +616,8 @@ def build_income_rows(usgaap: dict, period_ends: list[str]) -> tuple[list[dict[s
 
     metrics: dict[str, list[float | None]] = {
         "Total Revenues": rev,
-        "Total Revenues %Chg": yoy,
+        "Total Revenues %Chg (YoY)": yoy,
+        "Total Revenues %Chg (QoQ)": qoq,
         "Cost of Sales": cogs,
         "Gross Profit": gross,
         "Gross Profit Margin": gm,
@@ -764,7 +777,7 @@ def build_summary(quarters: list[dict], rows: list[dict], company: str, fy_end_m
     by = {r["label"]: r["values"] for r in rows}
     q0 = quarters[0]
     rev = by["Total Revenues"][0]
-    yoy = by.get("Total Revenues %Chg", by.get("Total Revenues %Chg (YoY)", ["—"]))[0]
+    yoy = by.get("Total Revenues %Chg (YoY)", by.get("Total Revenues %Chg", ["—"]))[0]
     om = by["Operating Margin"][0]
     eps = by["Diluted EPS"][0]
     ni = by["Consolidated Net Income"][0]

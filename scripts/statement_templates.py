@@ -7,7 +7,7 @@ from typing import Any
 
 # Display-value aliases when aligning legacy JSON → canonical labels.
 LABEL_ALIASES: dict[str, str] = {
-    "Total Revenues %Chg (YoY)": "Total Revenues %Chg",
+    "Total Revenues %Chg": "Total Revenues %Chg (YoY)",
     "Basic Weighted Avg Shares Outstanding": "Basic Weighted Average Shares Outstanding",
     "Diluted Weighted Avg Shares Outstanding": "Diluted Weighted Average Shares Outstanding",
     "Depreciation & Amortization (memo)": "Depreciation & Amortization (memo)",
@@ -34,7 +34,8 @@ def _section(title: str) -> RowSpec:
 # --- Income (single table, no section dividers) — union of AAPL / PANW / INTU ---
 INCOME_ROWS: list[RowSpec] = [
     RowSpec("Total Revenues", kind="total"),
-    RowSpec("Total Revenues %Chg", kind="italic", unit="%", derived=True),
+    RowSpec("Total Revenues %Chg (YoY)", kind="italic", unit="%", derived=True),
+    RowSpec("Total Revenues %Chg (QoQ)", kind="italic", unit="%", derived=True),
     RowSpec("Cost of Sales"),
     RowSpec("Gross Profit", kind="total", derived=True),
     RowSpec("Gross Profit Margin", kind="italic", unit="%", derived=True),

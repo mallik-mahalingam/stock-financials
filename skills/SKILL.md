@@ -237,7 +237,8 @@ Canonical row order is **`scripts/statement_templates.py`** (`INCOME_ROWS`) — 
 | Row | Maps from |
 |-----|-----------|
 | Total Revenues | Total net revenue |
-| Total Revenues %Chg | YoY % vs same quarter prior year |
+| Total Revenues %Chg (YoY) | YoY % vs same quarter prior year (column *i* vs *i*+4) |
+| Total Revenues %Chg (QoQ) | QoQ % vs prior quarter (column *i* vs *i*+1; newest column has no prior quarter) |
 | Cost of Sales | Total cost of revenue (or derived*) |
 | Gross Profit / Gross Profit Margin | derived |
 | SG&A, **D&A Expenses**, R&D, Other Operating Expenses | reported buckets |

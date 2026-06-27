@@ -1419,9 +1419,18 @@ def build_income_rows_from_store(store: dict[PeriodKey, dict[str, Any]], keys: l
         else:
             yoy.append((r - rev[j]) / abs(rev[j]) * 100)
 
+    qoq: list[float | None] = []
+    for i, r in enumerate(rev):
+        j = i + 1
+        if r is None or j >= n or rev[j] is None or rev[j] == 0:
+            qoq.append(None)
+        else:
+            qoq.append((r - rev[j]) / abs(rev[j]) * 100)
+
     metrics: dict[str, list[float | None]] = {
         "Total Revenues": rev,
-        "Total Revenues %Chg": yoy,
+        "Total Revenues %Chg (YoY)": yoy,
+        "Total Revenues %Chg (QoQ)": qoq,
         "Cost of Sales": cogs,
         "Gross Profit": gross,
         "Gross Profit Margin": gm,
