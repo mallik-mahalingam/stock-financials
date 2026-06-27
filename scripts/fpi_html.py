@@ -63,6 +63,7 @@ INCOME_ALIASES: dict[str, str] = {
     "revenue": "rev",
     "cost of goods sold": "cogs",
     "cost of sales": "cogs",
+    "total cost of sales": "cogs",
     "gross profit": "gross",
     "gross margin": "gm_pct",
     "gross margin (%)": "gm_pct",
@@ -78,6 +79,7 @@ INCOME_ALIASES: dict[str, str] = {
     "net profit": "net",
     "profit for the period": "net",
     "net profit for the period": "net",
+    "income after income taxes": "net_after_tax",
     "net profit": "net",
     "profit for the period": "net",
     "total revenues": "rev",
@@ -520,6 +522,30 @@ def table_score(rows: list[list[str]], needles: tuple[str, ...]) -> int:
     return sum(10 for n in needles if n in text)
 
 
+def _header_text(header_rows: list[list[str]]) -> str:
+    return " ".join(" ".join(r) for r in header_rows[:8]).lower()
+
+
+def quarterly_table_adjustment(header_rows: list[list[str]], cols: list[ColumnSpec]) -> int:
+    """Prefer Q1–Q4 / three-month tables over full-year year-vs-year P&L layouts."""
+    text = _header_text(header_rows)
+    bonus = 0
+    if re.search(r"\bq[1-4]\b", text):
+        bonus += 50
+    if "three months ended" in text:
+        bonus += 40
+    if any(parse_q_header(c.label) for c in cols):
+        bonus += 50
+    year_only = [c.label.strip() for c in cols if re.fullmatch(r"\d{4}", c.label.strip())]
+    if len(year_only) >= 2 and bonus == 0:
+        bonus -= 45
+    if any(p in text for p in ("year ended", "years ended", "twelve months ended")) and bonus == 0:
+        bonus -= 35
+    if re.search(r"profit and loss\s+\d{4}\s+\d{4}", text) and bonus == 0:
+        bonus -= 40
+    return bonus
+
+
 def find_best_table(
     tables: list[list[list[str]]],
     needles: tuple[str, ...],
@@ -537,6 +563,8 @@ def find_best_table(
         if not cols:
             continue
         score += len(cols)
+        if column_mode == "quarter":
+            score += quarterly_table_adjustment(header_rows, cols)
         if score > best_score:
             scale, currency = detect_scale_and_currency(rows)
             best = ParsedTable(rows=rows, columns=cols, scale=scale, currency=currency)
@@ -606,6 +634,158 @@ def merge_metric(
     entry = store.setdefault(key, {"source": source, "fields": {}})
     if entry["fields"].get(field) is None:
         entry["fields"][field] = value
+
+
+SLIDE_INCOME_LABELS: tuple[str, ...] = (
+    "total net sales",
+    "total cost of sales",
+    "gross profit",
+    "research and development costs",
+    "selling, general and administrative costs",
+    "income from operations",
+    "interest and other, net",
+    "income before income taxes",
+    "income tax expense",
+    "benefit from (provision for) income taxes",
+    "income after income taxes",
+    "net income",
+    "basic net income per ordinary share",
+)
+
+SLIDE_INCOME_FORCE_FIELDS = frozenset({"rev", "cogs", "gross", "op", "pretax", "tax", "net", "eps_b"})
+
+
+def extract_hidden_slide_blocks(html_text: str) -> list[str]:
+    """OCR-style text embedded in image-slide exhibits (e.g. ASML financialstatementsusgaa.htm)."""
+    blocks = re.findall(r'<FONT[^>]*color:\s*white[^>]*>(.*?)</FONT>', html_text, re.I | re.S)
+    out: list[str] = []
+    for block in blocks:
+        clean = html.unescape(re.sub(r"\s+", " ", block).strip())
+        if len(clean) > 200:
+            out.append(clean)
+    return out
+
+
+def parse_slide_period_ends(text: str) -> list[str]:
+    m = re.search(r"three months ended(.+?)(?:\(unaudited|20\d{2})", text, re.I)
+    if not m:
+        return []
+    chunk = m.group(1)
+    dates = re.findall(r"([A-Za-z]{3,9})\s+(\d{1,2})", chunk)
+    years = re.findall(r"\b(20\d{2})\b", text[m.start() : m.start() + 500])
+    if not dates or not years:
+        return []
+    n = min(len(dates), len(years))
+    out: list[str] = []
+    for i in range(n):
+        mon = MONTHS.get(dates[i][0].lower()[:3])
+        day = int(dates[i][1])
+        year = int(years[i])
+        if mon:
+            out.append(f"{year:04d}-{mon:02d}-{day:02d}")
+    return out
+
+
+def _slide_label_key(label: str) -> str | None:
+    key = alias_key(label, INCOME_ALIASES)
+    if key:
+        return key
+    if label == "income from operations":
+        return "op"
+    if label == "total cost of sales":
+        return "cogs"
+    if label == "income after income taxes":
+        return "net_after_tax"
+    if label == "basic net income per ordinary share":
+        return "eps_b"
+    return None
+
+
+def parse_slide_income_block(text: str, fy_end_month: int) -> ParsedTable | None:
+    low = text.lower()
+    if "total net sales" not in low or "income from operations" not in low:
+        return None
+    period_ends = parse_slide_period_ends(text)
+    if not period_ends:
+        return None
+    n = len(period_ends)
+    cols: list[ColumnSpec] = []
+    for i, pe in enumerate(period_ends):
+        pk = date_to_period_key(pe, fy_end_month)
+        cols.append(
+            ColumnSpec(
+                idx=i + 1,
+                kind="quarter",
+                year=pk[0],
+                quarter=pk[1],
+                period_end=pe,
+                label=pe,
+            )
+        )
+    metrics: dict[str, list[float | None]] = {}
+    for label in SLIDE_INCOME_LABELS:
+        key = _slide_label_key(label)
+        if not key:
+            continue
+        pat = re.escape(label) + r"\s+((?:\(?-?\d[\d,]*\.?\d*\)?\s*){" + str(n) + r"})"
+        m = re.search(pat, text, re.I)
+        if not m:
+            continue
+        nums = re.findall(r"\(?-?\d[\d,]*\.?\d*\)?", m.group(1))
+        metrics[key] = [parse_number(x) for x in nums[:n]]
+    if not metrics.get("rev"):
+        return None
+    rows: list[list[str]] = [["Line"] + [c.label for c in cols]]
+    for label in SLIDE_INCOME_LABELS:
+        key = _slide_label_key(label)
+        series = metrics.get(key) if key else None
+        if key == "total net sales":
+            series = metrics.get("rev")
+        if series:
+            rows.append([label] + [str(v) if v is not None else "" for v in series])
+    return ParsedTable(rows=rows, columns=cols, scale=1.0, currency="EUR")
+
+
+def parse_slide_income_from_html(html_text: str, fy_end_month: int) -> list[ParsedTable]:
+    tables: list[ParsedTable] = []
+    seen_keys: set[tuple[str, ...]] = set()
+    for block in extract_hidden_slide_blocks(html_text):
+        parsed = parse_slide_income_block(block, fy_end_month)
+        if not parsed:
+            continue
+        key = tuple(c.period_end for c in parsed.columns)
+        if key in seen_keys:
+            continue
+        seen_keys.add(key)
+        tables.append(parsed)
+    tables.sort(key=lambda t: len(t.columns), reverse=True)
+    return tables
+
+
+def merge_slide_income_metrics(
+    income_store: dict[PeriodKey, dict[str, Any]],
+    slide_tables: list[ParsedTable],
+    source: dict[str, str],
+) -> None:
+    """Merge GAAP slide income; overrides condensed press-release rows when fuller lines exist."""
+    for table in slide_tables:
+        raw = extract_metrics(table, INCOME_ALIASES)
+        if raw.get("net_after_tax"):
+            raw["net"] = raw["net_after_tax"]
+        for j, (pk, col) in enumerate(period_keys_from_table(table)):
+            entry = income_store.setdefault(pk, {"source": source, "fields": {}})
+            entry["source"] = source
+            entry["period_end"] = col.period_end
+            for field, series in raw.items():
+                if field == "net_after_tax" or j >= len(series):
+                    continue
+                val = series[j]
+                if val is None:
+                    continue
+                if field == "cogs" and val < 0:
+                    val = abs(val)
+                if field in SLIDE_INCOME_FORCE_FIELDS or entry["fields"].get(field) is None:
+                    entry["fields"][field] = val
 
 
 def prior_ytd_period_end(period_end: str, ytd_months: int) -> tuple[str, int] | None:
@@ -713,6 +893,11 @@ def parse_tables_from_html(
             currency = "TWD" if "taiwan" in code or code in ("nt$", "ntd", "twd") else code.upper()
             break
     if not html_has_financial_tables(html_text):
+        slide_tables = parse_slide_income_from_html(html_text, fy_end_month)
+        if slide_tables:
+            if slide_tables[0].currency != "USD":
+                currency = slide_tables[0].currency
+            merge_slide_income_metrics(income_store, slide_tables, source)
         return currency
     tables = extract_tables(html_text)
 
@@ -735,6 +920,12 @@ def parse_tables_from_html(
                 entry = bs_store.setdefault(pk, {"source": source, "fields": {}, "period_end": col.period_end})
                 entry["period_end"] = col.period_end
                 merge_metric(bs_store, pk, "cash", cash_val[j], source)
+
+    slide_tables = parse_slide_income_from_html(html_text, fy_end_month)
+    if slide_tables:
+        if slide_tables[0].currency != "USD":
+            currency = slide_tables[0].currency
+        merge_slide_income_metrics(income_store, slide_tables, source)
 
     bs = find_best_table(
         tables,
