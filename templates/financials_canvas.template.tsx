@@ -1,7 +1,7 @@
 __HEADER__
 import {
   Callout, Checkbox, Grid, H1, H2, H3, Pill, Row,
-  Select, Stack, Stat, Table, Text, useCanvasState, useHostTheme,
+  Select, Stack, Table, Text, useCanvasState, useHostTheme,
 } from "cursor/canvas";
 
 type Kind = "normal" | "italic" | "total";
@@ -26,6 +26,10 @@ type StockSnapshot = {
   source: string;
   asOf: string;
   price: string;
+  fromLowPct: string;
+  fromHighPct: string;
+  fromLowAbs: string;
+  fromHighAbs: string;
   fiftyTwoWeekLow: string;
   fiftyTwoWeekHigh: string;
   marketCap: string;
@@ -36,24 +40,134 @@ __STOCK_SNAPSHOT__
 
 __DATA_BLOCKS__
 
-function StockSnapshotTable({ snap }: { snap: StockSnapshot }) {
+__TAB_DATA__
+
+const TAB_LABELS: Record<string, string> = {
+  income: "Income",
+  "balance-sheet": "Balance Sheet",
+  "cash-flow": "Cash Flow",
+};
+
+type SummaryStat = { value: string; label: string; tone?: string };
+type MetricRow = { label: string; value: JSX.Element; rowTone?: "success" | "info" };
+type ValueTone = "default" | "accent" | "success" | "danger" | "info";
+
+function useMetricColors() {
+  const theme = useHostTheme();
+  return {
+    accent: theme.accent.primary,
+    success: theme.palette.diffStripAdded,
+    danger: theme.palette.diffStripRemoved,
+    info: theme.accent.primary,
+    default: theme.text.primary,
+  };
+}
+
+function MetricValue({ text, tone = "default" }: { text: string; tone?: ValueTone }) {
+  const colors = useMetricColors();
+  return <Text weight="semibold" style={{ color: colors[tone] }}>{text}</Text>;
+}
+
+function MetricStack({ lines }: { lines: Array<{ text: string; tone?: ValueTone }> }) {
   return (
-    <Stack gap={8}>
-      <H2>Stock snapshot</H2>
-      <Text tone="secondary" size="small">{snap.source} · {snap.asOf}</Text>
+    <Stack gap={2} style={{ alignItems: "flex-end" }}>
+      {lines.map((line) => (
+        <MetricValue key={line.text} text={line.text} tone={line.tone} />
+      ))}
+    </Stack>
+  );
+}
+
+function statValueTone(tone?: string): ValueTone {
+  if (tone === "success") return "success";
+  if (tone === "info") return "info";
+  return "default";
+}
+
+function CompactMetricTable({
+  title,
+  caption,
+  rows,
+}: {
+  title: string;
+  caption?: string;
+  rows: MetricRow[];
+}) {
+  return (
+    <Stack gap={6} style={{ height: "100%", minWidth: 0 }}>
+      <Stack gap={2}>
+        <H2>{title}</H2>
+        {caption ? <Text tone="secondary" size="small">{caption}</Text> : null}
+      </Stack>
       <Table
         headers={["Metric", "Value"]}
-        rows={[
-          ["Current price", snap.price],
-          ["52-week low", snap.fiftyTwoWeekLow],
-          ["52-week high", snap.fiftyTwoWeekHigh],
-          ["Market cap", snap.marketCap],
-          ["P/E (trailing)", snap.trailingPE],
-        ]}
+        rows={rows.map((r) => [r.label, r.value])}
         columnAlign={["left", "right"]}
+        rowTone={rows.map((r) => r.rowTone)}
         framed
+        style={{ width: "100%" }}
       />
     </Stack>
+  );
+}
+
+function KeyMetricsRow({
+  snap,
+  stats,
+  highlightsTitle,
+}: {
+  snap: StockSnapshot | null;
+  stats: SummaryStat[];
+  highlightsTitle: string;
+}) {
+  const marketRows: MetricRow[] = snap
+    ? [
+        {
+          label: "Price",
+          value: (
+            <MetricStack
+              lines={[
+                { text: snap.price, tone: "accent" },
+                { text: `${snap.fromLowPct} from 52W low (${snap.fromLowAbs})`, tone: "success" },
+                { text: `${snap.fromHighPct} from 52W high (${snap.fromHighAbs})`, tone: "danger" },
+              ]}
+            />
+          ),
+        },
+        { label: "52-week low", value: <MetricValue text={snap.fiftyTwoWeekLow} /> },
+        { label: "52-week high", value: <MetricValue text={snap.fiftyTwoWeekHigh} /> },
+        { label: "Market cap", value: <MetricValue text={snap.marketCap} tone="info" /> },
+        { label: "P/E (trailing)", value: <MetricValue text={snap.trailingPE} /> },
+      ]
+    : [];
+  const finRows: MetricRow[] = stats.map((s) => ({
+    label: s.label,
+    value: <MetricValue text={s.value} tone={statValueTone(s.tone)} />,
+    rowTone: s.tone === "success" || s.tone === "info" ? (s.tone as "success" | "info") : undefined,
+  }));
+
+  if (!snap && stats.length === 0) return null;
+
+  const showPair = snap && stats.length > 0;
+
+  return (
+    <Grid
+      columns={showPair ? "minmax(0, 1fr) minmax(0, 1fr)" : 1}
+      gap={16}
+      align="stretch"
+      style={{ width: "100%", maxWidth: 960 }}
+    >
+      {stats.length > 0 ? (
+        <CompactMetricTable title={highlightsTitle} rows={finRows} />
+      ) : null}
+      {snap ? (
+        <CompactMetricTable
+          title="Stock snapshot"
+          caption={`${snap.source} · ${snap.asOf}`}
+          rows={marketRows}
+        />
+      ) : null}
+    </Grid>
   );
 }
 
@@ -332,7 +446,6 @@ function StatementPanel({ tabKey, data, title }: { tabKey: string; data: Stateme
   const [selected, setSelected] = useCanvasState<string[]>(`${tabKey}.chartRows`, defaultChart);
   const toggle = (label: string) =>
     setSelected((prev) => (prev.includes(label) ? prev.filter((l) => l !== label) : [...prev, label]));
-  const stats = data.summary.stats ?? [];
   const fiscal = data.summary.fiscalMapping ?? "";
   const subtitle = data.summary.subtitle ?? "";
 
@@ -340,13 +453,6 @@ function StatementPanel({ tabKey, data, title }: { tabKey: string; data: Stateme
     <Stack gap={20}>
       {subtitle ? <Text tone="secondary">{subtitle}</Text> : null}
       {fiscal ? <Text tone="secondary" size="small">{fiscal}</Text> : null}
-      {stats.length > 0 ? (
-        <Grid columns={Math.min(4, stats.length)} gap={16}>
-          {stats.map((s) => (
-            <Stat key={s.label} value={s.value} label={s.label} tone={s.tone as "info" | "success" | undefined} />
-          ))}
-        </Grid>
-      ) : null}
       <H2>{title}</H2>
       {data.sections ? (
         data.sections.map((sec) => (
@@ -374,6 +480,8 @@ function StatementPanel({ tabKey, data, title }: { tabKey: string; data: Stateme
 
 export default function Financials() {
   const [tab, setTab] = useCanvasState<string>("activeTab", "__DEFAULT_TAB__");
+  const active = TAB_DATA[tab];
+  const stats = active?.summary.stats ?? [];
 
   return (
     <Stack gap={20} style={{ padding: 24, maxWidth: 1680 }}>
@@ -381,10 +489,14 @@ export default function Financials() {
         <H1>__TICKER__ — Financial Statements</H1>
         <Text tone="secondary">__SUBTITLE__</Text>
       </Stack>
-      {STOCK_SNAPSHOT ? <StockSnapshotTable snap={STOCK_SNAPSHOT} /> : null}
       <Row gap={8}>
 __PILLS__
       </Row>
+      <KeyMetricsRow
+        snap={STOCK_SNAPSHOT}
+        stats={stats}
+        highlightsTitle={`${TAB_LABELS[tab] ?? tab} highlights`}
+      />
 __PANELS__
     </Stack>
   );

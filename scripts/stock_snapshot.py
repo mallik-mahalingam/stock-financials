@@ -38,6 +38,35 @@ def _fmt_pe(v: float | None) -> str:
     return f"{v:.1f}x"
 
 
+def _fmt_pct(v: float | None) -> str:
+    if v is None:
+        return "—"
+    return f"{v:+.1f}%"
+
+
+def _fmt_price_delta(v: float | None) -> str:
+    if v is None:
+        return "—"
+    sign = "+" if v >= 0 else "-"
+    return f"{sign}${abs(v):,.2f}"
+
+
+def _range_metrics(price: float | None, low52: float | None, high52: float | None) -> dict[str, float | None]:
+    from_low_pct = from_high_pct = from_low_abs = from_high_abs = None
+    if price is not None and low52 not in (None, 0):
+        from_low_abs = price - low52
+        from_low_pct = from_low_abs / low52 * 100
+    if price is not None and high52 not in (None, 0):
+        from_high_abs = price - high52
+        from_high_pct = from_high_abs / high52 * 100
+    return {
+        "fromLowPct": from_low_pct,
+        "fromHighPct": from_high_pct,
+        "fromLowAbs": from_low_abs,
+        "fromHighAbs": from_high_abs,
+    }
+
+
 def fetch_snapshot(ticker: str) -> dict[str, Any]:
     try:
         import yfinance as yf
@@ -54,6 +83,7 @@ def fetch_snapshot(ticker: str) -> dict[str, Any]:
     high52 = info.get("fiftyTwoWeekHigh")
     mcap = info.get("marketCap")
     pe = info.get("trailingPE") or info.get("forwardPE")
+    range_m = _range_metrics(price, low52, high52)
 
     return {
         "ticker": ticker.strip().upper(),
@@ -66,12 +96,17 @@ def fetch_snapshot(ticker: str) -> dict[str, Any]:
         "fiftyTwoWeekHigh": high52,
         "marketCap": mcap,
         "trailingPE": pe,
+        **range_m,
         "display": {
             "price": _fmt_price(price),
             "fiftyTwoWeekLow": _fmt_price(low52),
             "fiftyTwoWeekHigh": _fmt_price(high52),
             "marketCap": _fmt_mcap(mcap),
             "trailingPE": _fmt_pe(pe),
+            "fromLowPct": _fmt_pct(range_m["fromLowPct"]),
+            "fromHighPct": _fmt_pct(range_m["fromHighPct"]),
+            "fromLowAbs": _fmt_price_delta(range_m["fromLowAbs"]),
+            "fromHighAbs": _fmt_price_delta(range_m["fromHighAbs"]),
         },
     }
 
@@ -85,6 +120,8 @@ def markdown_table(snapshot: dict[str, Any]) -> str:
         "| Metric | Value |",
         "|--------|-------|",
         f"| Current price | {d['price']} |",
+        f"| vs 52-week low | {d['fromLowPct']} ({d['fromLowAbs']}) |",
+        f"| vs 52-week high | {d['fromHighPct']} ({d['fromHighAbs']}) |",
         f"| 52-week low | {d['fiftyTwoWeekLow']} |",
         f"| 52-week high | {d['fiftyTwoWeekHigh']} |",
         f"| Market cap | {d['marketCap']} |",

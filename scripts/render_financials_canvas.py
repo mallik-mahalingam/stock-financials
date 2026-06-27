@@ -104,6 +104,10 @@ def render_financials_canvas(ticker: str, out_path: Path, statements: dict[str, 
             "source": snap["source"],
             "asOf": snap["asOf"],
             "price": d["price"],
+            "fromLowPct": d["fromLowPct"],
+            "fromHighPct": d["fromHighPct"],
+            "fromLowAbs": d["fromLowAbs"],
+            "fromHighAbs": d["fromHighAbs"],
             "fiftyTwoWeekLow": d["fiftyTwoWeekLow"],
             "fiftyTwoWeekHigh": d["fiftyTwoWeekHigh"],
             "marketCap": d["marketCap"],
@@ -125,6 +129,12 @@ def render_financials_canvas(ticker: str, out_path: Path, statements: dict[str, 
         f"const {key.upper().replace('-', '_')}_DATA = {json.dumps(embeds[key], ensure_ascii=False)};"
         for key in available
     )
+
+    tab_data_lines = ",\n".join(
+        f'  "{key}": {key.upper().replace("-", "_")}_DATA'
+        for key in available
+    )
+    tab_data_block = f"const TAB_DATA: Record<string, StatementData> = {{\n{tab_data_lines},\n}};"
 
     pills = "\n".join(
         f'        <Pill active={{tab === "{key}"}} onClick={{() => setTab("{key}")}}>{label}</Pill>'
@@ -149,6 +159,7 @@ def render_financials_canvas(ticker: str, out_path: Path, statements: dict[str, 
     body = (
         template.replace("__HEADER__", header)
         .replace("__DATA_BLOCKS__", data_blocks)
+        .replace("__TAB_DATA__", tab_data_block)
         .replace("__STOCK_SNAPSHOT__", snapshot_block)
         .replace("__TICKER__", t)
         .replace("__SUBTITLE__", subtitle)
