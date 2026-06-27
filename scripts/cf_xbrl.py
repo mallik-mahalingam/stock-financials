@@ -95,6 +95,10 @@ CF_CONCEPTS: dict[str, list[str]] = {
     "Common Share Dividends Paid": ["PaymentsOfDividends", "PaymentsOfDividendsCommonStock"],
     "Other Financing Activities": ["ProceedsFromPaymentsForOtherFinancingActivities"],
     "Cash from Financing Activities": ["NetCashProvidedByUsedInFinancingActivities"],
+    "Effect of Exchange Rate on Cash": [
+        "EffectOfExchangeRateOnCashCashEquivalentsRestrictedCashAndRestrictedCashEquivalents",
+        "EffectOfExchangeRateOnCashAndCashEquivalents",
+    ],
     "Net Change in Cash": [
         "CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalentsPeriodIncreaseDecreaseIncludingExchangeRateEffect",
         "CashAndCashEquivalentsPeriodIncreaseDecrease",
@@ -129,6 +133,7 @@ OPTIONAL_CF_ROWS = {
     "Changes in Accrued Expenses",
     "Changes in Income Taxes Payable",
     "Changes in Unearned Revenue",
+    "Effect of Exchange Rate on Cash",
 }
 
 
@@ -326,11 +331,12 @@ def verify_cf_rows(rows: list[dict[str, Any]], n: int) -> dict[str, Any]:
         op = num("Cash from Operating Activities", i)
         inv = num("Cash from Investing Activities", i)
         fin = num("Cash from Financing Activities", i)
+        fx = num("Effect of Exchange Rate on Cash", i) or 0.0
         net = num("Net Change in Cash", i)
         if op is not None and inv is not None and fin is not None and net is not None:
-            if abs(op + inv + fin - net) > 5:
+            if abs(op + inv + fin + fx - net) > 5:
                 section_ok = False
-                exc.append(f"col {i} O+I+F≠ΔCash")
+                exc.append(f"col {i} O+I+F+FX≠ΔCash")
     return {"sectionsTieToNetChangeInCash": section_ok, "exceptions": exc}
 
 

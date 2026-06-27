@@ -142,6 +142,7 @@ CASH_FLOW_ROWS: list[RowSpec] = [
     RowSpec("Common Share Dividends Paid"),
     RowSpec("Other Financing Activities", derived=True),
     RowSpec("Cash from Financing Activities", kind="total"),
+    RowSpec("Effect of Exchange Rate on Cash"),
     _section("Free Cash Flow"),
     RowSpec("Free Cash Flow", kind="total", derived=True),
     RowSpec("NOPAT", derived=True),
