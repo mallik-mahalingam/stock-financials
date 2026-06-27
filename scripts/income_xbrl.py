@@ -47,7 +47,7 @@ def fiscal_quarter_label(period_end: str, fy_end_month: int) -> str:
     return f"Q{q} FY{fy % 100:02d}"
 
 
-def discover_quarters(cik: str, n: int = 12) -> list[dict[str, Any]]:
+def discover_quarters(cik: str, n: int = 12, min_quarters: int = 4) -> list[dict[str, Any]]:
     entity = load_entity(cik)
     recent = entity["filings"]["recent"]
     seen: set[str] = set()
@@ -76,8 +76,10 @@ def discover_quarters(cik: str, n: int = 12) -> list[dict[str, Any]]:
         )
         if len(out) >= n:
             break
-    if len(out) < n:
-        raise SystemExit(f"Only found {len(out)} quarter-ends in EDGAR submissions (need {n})")
+    if len(out) < min_quarters:
+        raise SystemExit(
+            f"Only found {len(out)} quarter-ends in EDGAR submissions (need at least {min_quarters})"
+        )
     return out
 
 
@@ -300,7 +302,9 @@ def q4_flow(usgaap: dict, concepts: list[str], end: str, unit: str = "USD"):
     if end.endswith("-07-31"):
         return q4_flow_jul(usgaap, concepts, end, unit)
     if end.endswith("-12-31"):
-        return q4_flow_dec(usgaap, concepts, end, unit)
+        v = q4_flow_dec(usgaap, concepts, end, unit)
+        if v is not None:
+            return v
     return q4_flow_auto(usgaap, concepts, end, unit)
 
 
@@ -326,6 +330,73 @@ def flow(usgaap: dict, concepts: list[str], end: str, unit: str = "USD"):
 
 def g(usgaap: dict, concepts: list[str], end: str, *, unit: str = "USD"):
     return flow(usgaap, concepts, end, unit)
+
+
+REVENUE_CONCEPTS = [
+    "Revenues",
+    "SalesRevenueNet",
+    "RevenueFromContractWithCustomerIncludingAssessedTax",
+    "RevenueFromContractWithCustomerExcludingAssessedTax",
+]
+
+COGS_CONCEPTS = ["CostOfRevenue", "CostOfGoodsAndServicesSold"]
+
+# Legacy order kept for filers without a GrossProfit XBRL tag.
+LEGACY_REVENUE_CONCEPTS = [
+    "RevenueFromContractWithCustomerExcludingAssessedTax",
+    "RevenueFromContractWithCustomerIncludingAssessedTax",
+    "Revenues",
+    "SalesRevenueNet",
+]
+
+
+def _ties_gross_profit(rev: float, cogs: float, gp_tagged: float, *, tol: float = 1.0) -> bool:
+    return abs(rev - cogs - gp_tagged) <= tol
+
+
+def resolve_rev_cogs_gross(
+    usgaap: dict,
+    end: str,
+    cogs_c: list[str],
+) -> tuple[float | None, float | None, float | None, bool, str | None, str | None]:
+    """Pick revenue + COGS that tie to tagged GrossProfit when available.
+
+    Fintech-heavy filers (e.g. MELI) tag ``Revenues`` as net revenues *and* financial
+    income while ``CostOfGoodsAndServicesSold`` is cost of net revenues *and* financial
+    expenses. Using contract revenue with that broad COGS crushes gross margin.
+    """
+    gp_tagged = g(usgaap, ["GrossProfit"], end)
+    cogs_derived, cogs_is_derived = resolve_cogs(usgaap, end, cogs_c)
+
+    if gp_tagged is not None:
+        for rev_concept in REVENUE_CONCEPTS:
+            rev = g(usgaap, [rev_concept], end)
+            if rev is None:
+                continue
+            for cogs_concept in COGS_CONCEPTS:
+                cogs = g(usgaap, [cogs_concept], end)
+                if cogs is None:
+                    continue
+                if _ties_gross_profit(rev, cogs, gp_tagged):
+                    return rev, cogs, gp_tagged, False, rev_concept, cogs_concept
+        if cogs_derived is not None:
+            for rev_concept in REVENUE_CONCEPTS:
+                rev = g(usgaap, [rev_concept], end)
+                if rev is None:
+                    continue
+                if _ties_gross_profit(rev, cogs_derived, gp_tagged):
+                    return rev, cogs_derived, gp_tagged, cogs_is_derived, rev_concept, "derived"
+
+    rev = g(usgaap, LEGACY_REVENUE_CONCEPTS, end)
+    cogs = cogs_derived
+    if rev is not None and cogs is not None:
+        gross = rev - cogs
+        if gp_tagged is not None and not _ties_gross_profit(rev, cogs, gp_tagged):
+            gross = gp_tagged
+        return rev, cogs, gross, cogs_is_derived, None, None
+    if gp_tagged is not None:
+        return rev, cogs, gp_tagged, cogs_is_derived, None, None
+    return rev, cogs, None, cogs_is_derived, None, None
 
 
 def resolve_cogs(usgaap: dict, end: str, cogs_c: list[str]) -> tuple[float | None, bool]:
@@ -382,29 +453,25 @@ def row(
     }
 
 
-def build_income_rows(usgaap: dict, period_ends: list[str]) -> list[dict[str, Any]]:
+def build_income_rows(usgaap: dict, period_ends: list[str]) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     n = len(period_ends)
-    rev_c = [
-        "RevenueFromContractWithCustomerExcludingAssessedTax",
-        "RevenueFromContractWithCustomerIncludingAssessedTax",
-        "Revenues",
-    ]
-    cogs_c = ["CostOfRevenue", "CostOfGoodsAndServicesSold"]
+    cogs_c = COGS_CONCEPTS
     da_c = ["DepreciationDepletionAndAmortization", "DepreciationAndAmortization"]
 
-    rev = [g(usgaap, rev_c, e) for e in period_ends]
+    rev: list[float | None] = []
     cogs: list[float | None] = []
     cogs_derived: list[bool] = []
+    gross: list[float | None] = []
+    gp_tagged: list[float | None] = []
+    rev_concepts: list[str | None] = []
     for e in period_ends:
-        v, d = resolve_cogs(usgaap, e, cogs_c)
-        cogs.append(v)
-        cogs_derived.append(d)
-    gross = []
-    for i, e in enumerate(period_ends):
-        if rev[i] is not None and cogs[i] is not None:
-            gross.append(rev[i] - cogs[i])
-        else:
-            gross.append(g(usgaap, ["GrossProfit"], e))
+        r, c, gpv, c_derived, rev_c, _cogs_c = resolve_rev_cogs_gross(usgaap, e, cogs_c)
+        rev.append(r)
+        cogs.append(c)
+        cogs_derived.append(c_derived)
+        gross.append(gpv)
+        gp_tagged.append(g(usgaap, ["GrossProfit"], e))
+        rev_concepts.append(rev_c)
     rd = [g(usgaap, ["ResearchAndDevelopmentExpense"], e) for e in period_ends]
     sm = [g(usgaap, ["SellingAndMarketingExpense"], e) for e in period_ends]
     ga = [g(usgaap, ["GeneralAndAdministrativeExpense"], e) for e in period_ends]
@@ -416,7 +483,7 @@ def build_income_rows(usgaap: dict, period_ends: list[str]) -> list[dict[str, An
         for e in period_ends
     ]
     tax = [g(usgaap, ["IncomeTaxExpenseBenefit"], e) for e in period_ends]
-    net = [g(usgaap, ["NetIncomeLoss"], e) for e in period_ends]
+    net = [g(usgaap, ["NetIncomeLoss", "ProfitLoss"], e) for e in period_ends]
     eps_b = [g(usgaap, ["EarningsPerShareBasic"], e, unit="USD/shares") for e in period_ends]
     eps_d = [g(usgaap, ["EarningsPerShareDiluted"], e, unit="USD/shares") for e in period_ends]
     sh_b = [g(usgaap, ["WeightedAverageNumberOfSharesOutstandingBasic"], e, unit="shares") for e in period_ends]
@@ -617,7 +684,13 @@ def build_income_rows(usgaap: dict, period_ends: list[str]) -> list[dict[str, An
         else:
             values = [str(v) if v is not None else "—" for v in series]
         rows_out.append(row_from_spec(spec, values))
-    return rows_out
+
+    scope_meta = {
+        "revenueConcepts": rev_concepts,
+        "usesTotalRevenues": any(c == "Revenues" for c in rev_concepts),
+        "usesContractRevenueOnly": all(c in (None, "RevenueFromContractWithCustomerExcludingAssessedTax", "RevenueFromContractWithCustomerIncludingAssessedTax") for c in rev_concepts),
+    }
+    return rows_out, scope_meta
 
 
 def to_num(s: str) -> float | None:
@@ -631,18 +704,29 @@ def to_num(s: str) -> float | None:
     return -v if neg else v
 
 
-def verify_income_rows(rows: list[dict[str, Any]], n: int) -> dict[str, Any]:
+def verify_income_rows(
+    rows: list[dict[str, Any]],
+    n: int,
+    *,
+    gp_tagged: list[float | None] | None = None,
+    scope_meta: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     by = {r["label"]: r["values"] for r in rows}
-    gp_ok = op_ok = pt_ok = True
+    gp_ok = op_ok = pt_ok = xbrl_gp_ok = True
     exc: list[str] = []
+    xbrl_exc: list[str] = []
     rev_row = by.get("Total Revenues", ["—"] * n)
     cogs_row = by.get("Cost of Sales", ["—"] * n)
     gp_row = by.get("Gross Profit", ["—"] * n)
+    tagged = gp_tagged or [None] * n
     for i in range(n):
         rev, cogs, gp = to_num(rev_row[i]), to_num(cogs_row[i]), to_num(gp_row[i])
         if rev is not None and cogs is not None and gp is not None and abs(rev - cogs - gp) > 1:
             gp_ok = False
             exc.append(f"col {i} gross profit")
+        if tagged[i] is not None and gp is not None and abs(gp - tagged[i]) > 1:
+            xbrl_gp_ok = False
+            xbrl_exc.append(f"col {i} xbrl gross profit")
         if "Operating Profit" in by:
             op = to_num(by["Operating Profit"][i])
             gp = to_num(gp_row[i])
@@ -662,12 +746,18 @@ def verify_income_rows(rows: list[dict[str, Any]], n: int) -> dict[str, Any]:
             if pretax is not None and tax is not None and net is not None and abs(pretax - tax - net) > 2:
                 pt_ok = False
                 exc.append(f"col {i} pretax-tax-net")
-    return {
+    out: dict[str, Any] = {
         "grossProfitTies": gp_ok,
+        "grossProfitMatchesXbrlTag": xbrl_gp_ok,
         "operatingProfitTies": op_ok,
         "pretaxMinusTaxTiesNetIncome": pt_ok,
         "exceptions": exc,
     }
+    if xbrl_exc:
+        out["xbrlGrossProfitExceptions"] = xbrl_exc
+    if scope_meta:
+        out.update(scope_meta)
+    return out
 
 
 def build_summary(quarters: list[dict], rows: list[dict], company: str, fy_end_month: int) -> dict[str, Any]:
@@ -702,6 +792,8 @@ def build_summary(quarters: list[dict], rows: list[dict], company: str, fy_end_m
             "Q4 weighted-average shares* derived as |net income| ÷ EPS when XBRL only reports FY/9M WASO.",
             "Cost of sales* derived as CostsAndExpenses − S&M − R&D − G&A − amortization − restructuring "
             "when filer omits CostOfRevenue in XBRL (e.g. INTU).",
+            "Revenue + COGS chosen to tie SEC GrossProfit XBRL tag when tagged (required for fintech filers "
+            "where Revenues includes financial income and COGS includes financial expenses).",
             "D&A sums Depreciation + AmortizationOfIntangibleAssets + CostOfGoodsAndServicesSoldAmortization when no combined tag.",
             "SG&A = Sales & marketing + General & administrative. EBITDA* = Operating Profit + D&A.",
             "Effective tax rate omitted when |pretax| < $5M. Mark * on derived rows in Notes when validating.",
@@ -718,8 +810,15 @@ def build_income_document(ticker: str) -> dict[str, Any]:
     quarters = discover_quarters(cik, 12)
     period_ends = [q["periodEnd"] for q in quarters]
     usgaap = load_usgaap(cik)
-    rows = build_income_rows(usgaap, period_ends)
-    verification = verify_income_rows(rows, len(quarters))
+    rows, scope_meta = build_income_rows(usgaap, period_ends)
+    gp_tagged = [g(usgaap, ["GrossProfit"], e) for e in period_ends]
+    verification = verify_income_rows(rows, len(quarters), gp_tagged=gp_tagged, scope_meta=scope_meta)
+    if not verification.get("grossProfitMatchesXbrlTag", True):
+        mismatches = verification.get("xbrlGrossProfitExceptions", [])
+        raise SystemExit(
+            f"Income build for {t}: gross profit does not match SEC GrossProfit XBRL tag "
+            f"({', '.join(mismatches[:3])})"
+        )
     latest = latest_quarterly_filings(cik, limit=1)[0]
     summary = build_summary(quarters, rows, company, fy_end)
 

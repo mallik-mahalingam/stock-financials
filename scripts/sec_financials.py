@@ -195,13 +195,18 @@ def validate_income(data: dict[str, Any]) -> list[str]:
     n = len(quarters)
     if not quarters:
         errors.append("quarters must not be empty")
-    if n != 12:
-        errors.append(f"expected 12 quarters, found {n}")
+    if n < 4 or n > 12:
+        errors.append(f"expected 4–12 quarters, found {n}")
     for i, row in enumerate(rows):
         vals = row.get("values") or []
         if len(vals) != n:
             errors.append(f"row '{row.get('label')}' has {len(vals)} values, expected {n}")
     errors.extend(f"missing data: {m}" for m in missing_data_columns(data))
+    verification = data.get("verification") or {}
+    if verification.get("grossProfitMatchesXbrlTag") is False:
+        mismatches = verification.get("xbrlGrossProfitExceptions") or verification.get("exceptions") or []
+        hint = ", ".join(mismatches[:3]) if mismatches else "see verification"
+        errors.append(f"gross profit does not match SEC GrossProfit XBRL tag ({hint})")
     from statement_align import row_order_errors
 
     errors.extend(row_order_errors(data))
@@ -222,8 +227,8 @@ def validate_statement(data: dict[str, Any]) -> list[str]:
     n = len(quarters)
     if not quarters:
         errors.append("quarters must not be empty")
-    if n != 12:
-        errors.append(f"expected 12 quarters, found {n}")
+    if n < 4 or n > 12:
+        errors.append(f"expected 4–12 quarters, found {n}")
     for row in rows:
         vals = row.get("values") or []
         if len(vals) != n:

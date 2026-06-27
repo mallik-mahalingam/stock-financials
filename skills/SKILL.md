@@ -219,13 +219,16 @@ Quarters auto-discovered from EDGAR submissions (12 period-ends, most recent fir
 
 **COGS / gross profit gaps:** Some filers (e.g. INTU) report cost of revenue in the 10-Q but do not tag `CostOfRevenue` in XBRL. Builder derives cost of sales* as `CostsAndExpenses − operating expense components` and marks derived cells with `*`.
 
+**Revenue scope (fintech filers):** Some filers (e.g. MELI) tag `Revenues` as *net revenues and financial income* while `CostOfGoodsAndServicesSold` is *cost of net revenues and financial expenses*. The builder **must** pair revenue + COGS to the SEC **`GrossProfit` XBRL tag** — never use contract-only revenue (`RevenueFromContractWithCustomerExcludingAssessedTax`) with broad COGS. Build/validate **fail** when computed gross profit diverges from tagged `GrossProfit` by >$1M.
+
 ## Verification
 
 - Gross Profit = Revenue − Cost of Sales
+- **Gross Profit matches SEC `GrossProfit` XBRL tag** (`grossProfitMatchesXbrlTag`) — mandatory when tag exists
 - Operating Profit ties to reported income from operations
 - Pretax − Tax = Net Income
 
-Set in JSON `verification`: `grossProfitTies`, `operatingProfitTies`, `pretaxMinusTaxTiesNetIncome`.
+Set in JSON `verification`: `grossProfitTies`, `grossProfitMatchesXbrlTag`, `operatingProfitTies`, `pretaxMinusTaxTiesNetIncome`.
 
 ## Row mapping (order)
 
@@ -257,8 +260,9 @@ Included in `sync TICKER`. Tabs appear only for JSON that exists.
 2. Fiscal mapping
 3. Spot-check — latest + mid-window: revenue, operating income, net income, diluted EPS
 4. Subtotal verification (step above)
-5. All `*` / derived cells
-6. Copy-paste prompt:
+5. **`grossProfitMatchesXbrlTag`** — if false, rebuild income; do not analyze margins from stale JSON
+6. All `*` / derived cells
+7. Copy-paste prompt:
 
 ```
 You are auditing a GAAP income statement built from SEC XBRL company facts (10-Q/10-K).
@@ -332,7 +336,7 @@ Spot-check: Operating, Investing, Financing, Net Change in Cash, CapEx. Standalo
 
 ```
 - [ ] sync TICKER
-- [ ] validate each JSON (anchor rows filled, 12 quarters)
+- [ ] validate each JSON (anchor rows filled, 12 quarters; income `grossProfitMatchesXbrlTag` must be true)
 - [ ] if missingJson: build balance-sheet and/or cash-flow JSON → validate → sync TICKER again
 - [ ] if missingColumns in sync output: fix gaps → validate → sync again
 - [ ] link canvas/{ticker}-financials.canvas.tsx in chat
@@ -347,6 +351,7 @@ Do not claim "verified" without running the arithmetic checks for each statement
 
 **SEC EDGAR is source of truth.** Row order follows `scripts/statement_templates.py`; values are XBRL-derived.
 
+- **Revenue scope mismatch**: fintech filers may tag `Revenues` broader than contract revenue; builder pairs to `GrossProfit` XBRL tag (see income section).
 - **WC line items** (cash flow): quarterly = fiscal YTD − prior YTD; individual lines may differ from vendor displays while **Operating / Investing / Financing totals** tie to SEC.
 - **COGS / gross profit***: derived when filer omits `CostOfRevenue` (INTU); cells marked `*`.
 - **Other receivables / APIC**: filer-specific XBRL tag fallbacks; subtotals still tie.
