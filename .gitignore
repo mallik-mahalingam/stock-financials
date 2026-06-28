@@ -3,6 +3,8 @@ json-data/*
 !json-data/.gitkeep
 canvas/*
 !canvas/.gitkeep
+summary-data/*
+!summary-data/.gitkeep
 
 # Local HTML previews (not checked in)
 docs/preview/

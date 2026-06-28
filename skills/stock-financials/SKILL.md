@@ -11,6 +11,8 @@ description: >-
 
 # Stock Financials
 
+**Related:** multi-ticker peer comparison table → `skills/stock-summary/` (`stock-summary` skill).
+
 One workflow for **three statement types**. User gives **ticker only** — agent runs all three. JSON is the source of truth; one **tabbed canvas** is the deliverable.
 
 ## Default command (ticker only)

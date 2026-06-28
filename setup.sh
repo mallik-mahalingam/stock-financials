@@ -78,11 +78,12 @@ fi
 # shellcheck disable=SC1090
 source "${ENV_FILE}"
 
-read -r -p "Link AI skill for Cursor? (add skills/ manually for Claude) [Y/n] " LINK_SKILL
+read -r -p "Link AI skills for Cursor? [Y/n] " LINK_SKILL
 if [[ ! "${LINK_SKILL}" =~ ^[Nn]$ ]]; then
   mkdir -p "${HOME}/.cursor/skills"
-  ln -sf "${REPO_ROOT}/skills" "${HOME}/.cursor/skills/stock-financials"
-  echo "Cursor skill linked."
+  ln -sf "${REPO_ROOT}/skills/stock-financials" "${HOME}/.cursor/skills/stock-financials"
+  ln -sf "${REPO_ROOT}/skills/stock-summary" "${HOME}/.cursor/skills/stock-summary"
+  echo "Cursor skills linked: stock-financials, stock-summary"
 fi
 
 echo ""

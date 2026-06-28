@@ -135,7 +135,7 @@ Open the `.canvas.tsx` file in **Cursor** for the interactive view (tabs + chart
 
 <small>
 
-Saved data appears in `json-data/` and `canvas/` inside this folder (created automatically). Advanced CLI (`sync`, `check`, `build`) lives in `scripts/sec_financials.py`. Agent workflow details: `skills/SKILL.md`.
+Saved data appears in `json-data/` and `canvas/` inside this folder (created automatically). Advanced CLI (`sync`, `check`, `build`) lives in `scripts/sec_financials.py`. Agent workflows: `skills/stock-financials/SKILL.md` (SEC statements) and `skills/stock-summary/SKILL.md` (peer comparison table).
 
 </small>
 
